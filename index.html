@@ -954,10 +954,10 @@ function updatePreview() {
   const nomeCliente = selectedClient ? ` - <span style="color:var(--text-muted); font-weight:500;">${selectedClient.nome}</span>` : '';
   if (num) {
     subjectEl.innerHTML = ` Documentos da Carga - <span class="highlight">${num}</span>${nomeCliente}`;
-    bodyEl.innerHTML    = `Olá,<br><br> Segue anexo com os arquivos XMLs e PDFs.<br><br>Carga: <span class="highlight">${num}</span>`;
+    bodyEl.innerHTML    = `Olá,<br><br> Segue anexo com os arquivos XMLs e PDFs:<br><br>Carga: <span class="highlight">${num}</span>`;
   } else {
     subjectEl.innerHTML = ` Documentos da Carga - <em class="preview-placeholder">[número da carga]</em>${nomeCliente}`;
-    bodyEl.innerHTML    = `Olá,<br><br> Segue anexo com os arquivos XMLs e PDFs.<br><br>Carga: <span class="preview-placeholder"><em>[número da carga]</em></span>`;
+    bodyEl.innerHTML    = `Olá,<br><br> Segue anexo com os arquivos XMLs e PDFs:<br><br>Carga: <span class="preview-placeholder"><em>[número da carga]</em></span>`;
   }
 }
 
@@ -966,7 +966,7 @@ function updatePreview() {
 ════════════════════════════════════════ */
 document.getElementById('btnCopy').addEventListener('click', () => {
   const num  = cargaNum.value.trim() || '[número da carga]';
-  const text = `Assunto: Documentos da Carga - ${num}\n\nOlá,<br><br>Segue anexo com os arquivos XMLs e PDFs.\n\nCarga: ${num}`;
+  const text = `Assunto: Documentos da Carga - ${num}\n\nOlá,\n\nSegue anexo com os arquivos XMLs e PDFs:\n\nCarga: ${num}`;
   navigator.clipboard.writeText(text).then(() => showToast('Mensagem copiada!')).catch(() => showToast('Erro ao copiar.'));
 });
 
@@ -992,7 +992,7 @@ document.getElementById('btnSend').addEventListener('click', () => {
   const to      = selectedClient.destinatario;
   const cc      = selectedClient.cc || '';
   const subject = encodeURIComponent(`Documentos da Carga - ${num} - ${selectedClient.nome}`);
-  const body    = encodeURIComponent(`Olá,<br><br> Segue anexo com os arquivos XMLs e PDFs.\n\nCarga: ${num}`);
+  const body    = encodeURIComponent(`Olá,\n\n Segue anexo com os arquivos XMLs e PDFs:\n\nCarga: ${num}`);
 
   const mailto = `mailto:${to}?${cc ? 'cc=' + cc + '&' : ''}subject=${subject}&body=${body}`;
   window.location.href = mailto;
