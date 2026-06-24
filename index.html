@@ -840,7 +840,32 @@ const CLIENTES = [
 ════════════════════════════════════════ */
 let selectedClient = null;
 let sessionCount   = 0;
-let envios         = JSON.parse(localStorage.getItem('adimax_envios') || '[]');
+let envios = [];
+  const SUPABASE_URL = 'https://steshsjylmoiqwdcpytu.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; // sua chave completa
+
+async function sbInsert(registro) {
+  await fetch(${SUPABASE_URL}/rest/v1/envios, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_KEY,
+      'Authorization': Bearer ${SUPABASE_KEY},
+      'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify(registro)
+  });
+}
+
+async function sbSelect(filtros = {}) {
+  let url = ${SUPABASE_URL}/rest/v1/envios?order=id.desc&limit=500;
+  if (filtros.texto) url += &or=(carga.ilike.*${filtros.texto}*,cliente.ilike.*${filtros.texto}*);
+  if (filtros.data)  url += &data=eq.${filtros.data};
+  const res = await fetch(url, {
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': Bearer ${SUPABASE_KEY} }
+  });
+  return res.json();
+}
 
 /* ════════════════════════════════════════
    DARK MODE
@@ -949,16 +974,16 @@ document.getElementById('btnSend').addEventListener('click', () => {
   const num = cargaNum.value.trim();
 
   // Validação
-  if (!num) {
-    document.getElementById('cargaError').style.display = 'block';
-    cargaNum.focus();
-    return;
-  }
-  document.getElementById('cargaError').style.display = 'none';
-
-  if (!selectedClient) {
-    showToast('Selecione um cliente antes de continuar.', 'warning');
-    return;
+const registro = {
+    data: now.toLocaleDateString('pt-BR'),
+    hora: now.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}),
+    cliente: selectedClient.nome,
+    carga: num,
+    destinatario: to,
+    cc: selectedClient.cc || '',
+    status: 'Enviado'
+  };
+  sbInsert(registro).then(() => envios.unshift(registro));
   }
 
   const to      = selectedClient.destinatario;
