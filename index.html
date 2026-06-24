@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Faturamento - E-mail</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --orange:    #F5A623;
+      --orange-d:  #E29412;
+      --orange-dk: #C67E00;
+      --white:     #FFFFFF;
+      --bg:        #F7F8FA;
+      --text:      #1F1F1F;
+      --text-muted:#6B7280;
+      --border:    #E5E5E5;
+      --card:      #FFFFFF;
+      --shadow:    0 2px 12px rgba(0,0,0,.08);
+      --shadow-lg: 0 8px 32px rgba(0,0,0,.12);
+      --radius:    14px;
+      --radius-sm: 8px;
+    }
+
+    /* Dark mode */
+    body.dark {
+      --bg:     #111827;
+      --card:   #1F2937;
+      --text:   #F9FAFB;
+      --text-muted: #9CA3AF;
+      --border: #374151;
+      --shadow: 0 2px 12px rgba(0,0,0,.4);
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      transition: background .3s, color .3s;
+    }
+
+    /* ── Header ── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--orange);
+      box-shadow: 0 2px 16px rgba(0,0,0,.15);
+      padding: 0 24px;
+      height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-brand i {
+      font-size: 1.6rem;
+      color: var(--white);
+      opacity: .9;
+    }
+
+    color: #1F1F1F;
+    }
+
+    .header-brand span {
+      display: block;
+      font-size: .72rem;
+      font-weight: 400;
+      opacity: .8;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-icon {
+      background: rgba(255,255,255,.2);
+      border: none;
+      border-radius: 50%;
+      width: 38px; height: 38px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      color: var(--white);
+      font-size: .95rem;
+      transition: background .2s, transform .15s;
+    }
+    .btn-icon:hover { background: rgba(255,255,255,.35); transform: scale(1.08); }
+
+    /* Tab nav */
+    .tab-nav {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      padding: 0 24px;
+      gap: 0;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 14px 20px;
+      font-family: 'Poppins', sans-serif;
+      font-size: .85rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      border-bottom: 3px solid transparent;
+      transition: color .2s, border-color .2s;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .tab-btn.active {
+      color: var(--orange-dk);
+      border-bottom-color: var(--orange);
+    }
+    .tab-btn:hover:not(.active) { color: var(--text); }
+
+    /* ── Main ── */
+    main { max-width: 820px; margin: 0 auto; padding: 28px 20px 60px; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border);
+      transition: box-shadow .2s;
+    }
+    .card:hover { box-shadow: var(--shadow-lg); }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .card-icon {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, var(--orange) 0%, var(--orange-d) 100%);
+      border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff;
+      font-size: .9rem;
+      flex-shrink: 0;
+    }
+    .card-title { font-size: .95rem; font-weight: 600; }
+    .card-subtitle { font-size: .75rem; color: var(--text-muted); }
+
+    /* ── Form Elements ── */
+    label {
+      display: block;
+      font-size: .8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 7px;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+    }
+
+    .field { margin-bottom: 18px; }
+
+    .input-wrap {
+      position: relative;
+    }
+    .input-wrap i {
+      position: absolute;
+      left: 13px; top: 50%; transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: .85rem;
+      pointer-events: none;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select {
+      width: 100%;
+      padding: 11px 13px 11px 36px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: 'Poppins', sans-serif;
+      font-size: .9rem;
+      background: var(--bg);
+      color: var(--text);
+      transition: border-color .2s, box-shadow .2s;
+      outline: none;
+      appearance: none;
+    }
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    select:focus {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 3px rgba(245,166,35,.15);
+    }
+
+    /* Custom select wrapper */
+    .select-wrap { position: relative; }
+    .select-wrap select { padding-left: 14px !important; }
+    .select-wrap::after {
+      content: '\f078';
+      font-family: 'Font Awesome 6 Free';
+      font-weight: 900;
+      position: absolute;
+      right: 13px; top: 50%; transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: .75rem;
+      pointer-events: none;
+    }
+
+    /* Search input */
+    .search-input {
+      padding-left: 36px !important;
+    }
+
+    /* ── Info row ── */
+    .info-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 14px;
+    }
+    @media (max-width: 500px) { .info-row { grid-template-columns: 1fr; } }
+
+    .info-chip {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+    }
+    .info-chip .chip-label {
+      font-size: .68rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      margin-bottom: 4px;
+    }
+    .info-chip .chip-value {
+      font-size: .82rem;
+      font-weight: 500;
+      word-break: break-all;
+    }
+
+    /* ── Preview box ── */
+    .preview-box {
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-left: 4px solid var(--orange);
+      border-radius: var(--radius-sm);
+      padding: 16px 18px;
+      font-size: .85rem;
+      line-height: 1.8;
+    }
+    .preview-box .preview-subject {
+      font-weight: 600;
+      margin-bottom: 10px;
+      font-size: .9rem;
+    }
+    .preview-box .highlight {
+      background: rgba(245,166,35,.2);
+      color: var(--orange-dk);
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+    .preview-placeholder {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    /* ── Buttons ── */
+    .btn-primary {
+      width: 100%;
+      padding: 15px 20px;
+      background: linear-gradient(135deg, var(--orange) 0%, var(--orange-d) 100%);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: #fff;
+      font-family: 'Poppins', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      transition: transform .15s, box-shadow .2s, filter .2s;
+      box-shadow: 0 4px 14px rgba(226,148,18,.4);
+      letter-spacing: .3px;
+    }
+    .btn-primary:hover {
+      filter: brightness(1.06);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(226,148,18,.5);
+    }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .btn-secondary {
+      padding: 9px 16px;
+      background: transparent;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: 'Poppins', sans-serif;
+      font-size: .82rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex; align-items: center; gap: 7px;
+      transition: border-color .2s, background .2s;
+    }
+    .btn-secondary:hover { border-color: var(--orange); background: rgba(245,166,35,.06); }
+
+    /* ── Counter badge ── */
+    .counter-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, var(--orange) 0%, var(--orange-d) 100%);
+      color: #fff;
+      border-radius: 20px;
+      padding: 5px 14px 5px 10px;
+      font-size: .78rem;
+      font-weight: 600;
+    }
+    .counter-badge .count-num {
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #1F2937;
+      color: #fff;
+      padding: 12px 22px;
+      border-radius: 10px;
+      font-size: .85rem;
+      font-weight: 500;
+      box-shadow: 0 6px 24px rgba(0,0,0,.25);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s, transform .25s;
+      display: flex; align-items: center; gap: 8px;
+      z-index: 999;
+    }
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    body.dark #toast { background: #374151; }
+
+    /* ── Tab panels ── */
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Report / Table ── */
+    .report-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .filter-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .filter-row input[type="text"],
+    .filter-row input[type="date"] {
+      padding: 9px 12px 9px 34px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: 'Poppins', sans-serif;
+      font-size: .82rem;
+      background: var(--card);
+      color: var(--text);
+      outline: none;
+      min-width: 140px;
+    }
+    .filter-row input:focus { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(245,166,35,.15); }
+
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .82rem;
+      min-width: 600px;
+    }
+    thead { background: linear-gradient(135deg, var(--orange) 0%, var(--orange-d) 100%); }
+    thead th {
+      padding: 12px 16px;
+      color: #fff;
+      font-weight: 600;
+      text-align: left;
+      letter-spacing: .3px;
+      font-size: .78rem;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background .15s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(245,166,35,.05); }
+    tbody td { padding: 11px 16px; color: var(--text); }
+    .td-num { font-weight: 700; color: var(--orange-dk); }
+    .td-empty {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    .report-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+    .stat-card .stat-num {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--orange-dk);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .stat-card .stat-label {
+      font-size: .72rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .4px;
+    }
+
+    /* Badge status */
+    .badge {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 20px;
+      font-size: .7rem;
+      font-weight: 600;
+    }
+    .badge-sent { background: #D1FAE5; color: #065F46; }
+    body.dark .badge-sent { background: #064E3B; color: #6EE7B7; }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 40px 20px 30px;
+      border-top: 1px solid var(--border);
+      margin-top: 40px;
+    }
+    .footer-logo img {
+  width: 120px;
+  transition: transform .2s;
+}
+    }
+    .footer-logo img:hover { transform: scale(1.05); }
+    .footer-text {
+      margin-top: 12px;
+      font-size: .75rem;
+      color: var(--text-muted);
+    }
+    .footer-text strong { color: var(--orange-dk); }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      header { padding: 0 14px; }
+      .header-brand h1 { font-size: 1rem; }
+      main { padding: 18px 12px 50px; }
+      .card { padding: 18px; }
+    }
+
+    /* ── Animations ── */
+    .card { animation: fadeUp .35s ease both; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Pulse on send */
+    @keyframes pulse-ring {
+      0%   { box-shadow: 0 0 0 0 rgba(245,166,35,.5); }
+      70%  { box-shadow: 0 0 0 10px rgba(245,166,35,0); }
+      100% { box-shadow: 0 0 0 0 rgba(245,166,35,0); }
+    }
+    .pulse { animation: pulse-ring .6s; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════ HEADER ══════════════ -->
+<header>
+  <div class="header-brand">
+  
+    <div>
+      <h1>✉️ Faturamento - Envio de E-mails</h1>
+  
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="btn-icon" id="darkToggle" title="Alternar modo escuro">
+      <i class="fa-solid fa-moon" id="darkIcon"></i>
+    </button>
+  </div>
+</header>
+
+<!-- ══════════════ TABS ══════════════ -->
+<nav class="tab-nav">
+  <button class="tab-btn active" data-tab="envio">
+    <i class="fa-solid fa-paper-plane"></i> Novo E-mail
+  </button>
+  <button class="tab-btn" data-tab="relatorio">
+    <i class="fa-solid fa-table-list"></i> Relatório de Envios
+  </button>
+</nav>
+
+<!-- ══════════════ MAIN ══════════════ -->
+<main>
+
+  <!-- ─── TAB: ENVIO ─── -->
+  <div class="tab-panel active" id="panel-envio">
+
+    <!-- Contador -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+      <div class="counter-badge">
+        <i class="fa-solid fa-envelope-open-text"></i>
+        <span class="count-num" id="sessionCount">0</span>
+        <span>e-mail(s) gerados nesta sessão</span>
+      </div>
+    </div>
+
+    <!-- Card 1: Cliente -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon"><i class="fa-solid fa-building-user"></i></div>
+        <div>
+          <div class="card-title">Seleção do Cliente</div>
+          <div class="card-subtitle">Escolha o destinatário na lista</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="clientSelect"><i class="fa-solid fa-list" style="margin-right:5px;"></i>Cliente</label>
+        <div class="select-wrap">
+          <select id="clientSelect">
+            <option value="" disabled selected>— Selecione um cliente —</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Seleção atual -->
+      <div id="clientInfo" style="display:none;">
+        <div class="info-row">
+          <div class="info-chip">
+            <div class="chip-label"><i class="fa-solid fa-at" style="margin-right:4px;"></i>Destinatário</div>
+            <div class="chip-value" id="chipTo">—</div>
+          </div>
+          <div class="info-chip">
+            <div class="chip-label"><i class="fa-solid fa-copy" style="margin-right:4px;"></i>Cópia (CC)</div>
+            <div class="chip-value" id="chipCc">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 2: Carga -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon"><i class="fa-solid fa-box"></i></div>
+        <div>
+          <div class="card-title">Número da Carga</div>
+          <div class="card-subtitle">Campo obrigatório</div>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label for="cargaNum">Número da Carga *</label>
+        <div class="input-wrap">
+          <i class="fa-solid fa-hashtag"></i>
+          <input type="text" id="cargaNum" placeholder="Ex.: 123456" maxlength="30"/>
+        </div>
+        <div id="cargaError" style="color:#DC2626; font-size:.75rem; margin-top:5px; display:none;">
+          <i class="fa-solid fa-triangle-exclamation"></i> Informe o número da carga antes de continuar.
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 3: Pré-visualização -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon"><i class="fa-solid fa-eye"></i></div>
+        <div>
+          <div class="card-title">Pré-visualização</div>
+          <div class="card-subtitle">Gerada em tempo real</div>
+        </div>
+      </div>
+      <div class="preview-box" id="previewBox">
+        <!-- Cabeçalho do e-mail -->
+        <div style="border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:12px;">
+          <div style="display:flex; gap:6px; align-items:baseline; margin-bottom:6px;">
+            <span style="font-size:.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; min-width:48px;">Para:</span>
+            <span id="prevTo" style="font-size:.83rem; font-weight:600; color:var(--orange-dk);" class="preview-placeholder"><em>[selecione um cliente]</em></span>
+          </div>
+          <div style="display:flex; gap:6px; align-items:baseline; margin-bottom:6px;">
+            <span style="font-size:.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; min-width:48px;">CC:</span>
+            <span id="prevCc" style="font-size:.83rem; color:var(--text-muted);" class="preview-placeholder"><em>[—]</em></span>
+          </div>
+          <div style="display:flex; gap:6px; align-items:baseline;">
+            <span style="font-size:.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; min-width:48px;">Assunto:</span>
+            <span id="prevSubjectVal" style="font-size:.83rem; font-weight:600;"> Documentos da Carga - <em class="preview-placeholder">[número da carga]</em></span>
+          </div>
+        </div>
+        <!-- Corpo -->
+        <div id="prevBody" style="font-size:.88rem; line-height:1.9;">
+          Bom dia,
+          Segue anexo com os arquivos XMLs e PDFs:<br><br>
+          Carga: <span class="preview-placeholder"><em>[número da carga]</em></span>
+        </div>
+      </div>
+
+      <!-- Ações -->
+      <div style="display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;">
+        <button class="btn-secondary" id="btnCopy">
+          <i class="fa-solid fa-copy"></i> Copiar Mensagem
+        </button>
+      </div>
+    </div>
+
+    <!-- Botão principal -->
+    <button class="btn-primary" id="btnSend">
+      <i class="fa-solid fa-envelope"></i> Enviar E-mail
+    </button>
+
+  </div><!-- /panel-envio -->
+
+  <!-- ─── TAB: RELATÓRIO ─── -->
+  <div class="tab-panel" id="panel-relatorio">
+
+    <!-- Stats -->
+    <div class="report-stats">
+      <div class="stat-card">
+        <div class="stat-num" id="statTotal">0</div>
+        <div class="stat-label">Total de Envios</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="statHoje">0</div>
+        <div class="stat-label">Hoje</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="statClientes">0</div>
+        <div class="stat-label">Clientes Únicos</div>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card" style="padding:18px 20px;">
+      <div class="report-header">
+        <div style="font-weight:600; font-size:.9rem; display:flex; align-items:center; gap:8px;">
+          <i class="fa-solid fa-filter" style="color:var(--orange);"></i> Filtros
+        </div>
+        <div class="filter-row">
+          <div class="input-wrap" style="flex:1; min-width:160px;">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="filterText" placeholder="Buscar carga / cliente…" style="padding-left:34px;"/>
+          </div>
+          <div class="input-wrap">
+            <i class="fa-solid fa-calendar"></i>
+            <input type="date" id="filterDate" style="padding-left:34px;"/>
+          </div>
+          <button class="btn-secondary" id="btnClearFilter" title="Limpar filtros">
+            <i class="fa-solid fa-xmark"></i> Limpar
+          </button>
+          <button class="btn-secondary" id="btnExport" title="Exportar CSV">
+            <i class="fa-solid fa-file-csv"></i> Exportar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabela -->
+    <div class="card" style="padding:0; overflow:hidden;">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Ordem</th>
+              <th>Data / Hora</th>
+              <th>Cliente</th>
+              <th>Nº Carga</th>
+              <th>Destinatário</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="reportBody">
+            <tr><td colspan="6" class="td-empty">Nenhum envio registrado ainda.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /panel-relatorio -->
+
+</main>
+
+<!-- ══════════════ FOOTER ══════════════ -->
+<footer>
+  <div class="footer-logo">
+    <img src="https://adimax.com.br/wp-content/uploads/2021/08/2020_adimax.png" alt="Adimax"/>
+  </div>
+  <div class="footer-text">
+    <strong>Faturamento</strong> · Desenvolvido para automação de E-mails.
+  </div>
+</footer>
+
+<!-- Toast -->
+<div id="toast"><i class="fa-solid fa-check-circle"></i> <span id="toastMsg">Copiado!</span></div>
+
+<script>
+/* ════════════════════════════════════════
+   CLIENTES — adicione novos aqui facilmente
+════════════════════════════════════════ */
+const CLIENTES = [
+  {
+    nome: "Expresso Descalvado Transportes.",
+    destinatario: "descalvado.cte@adimax.com.br",
+    cc: "faturamento.salto@adimax.com.br",
+    assunto: "Documentos da Carga"
+  },
+  {
+    nome: "Cobasi",
+    destinatario: "camila.galastri@adimax.com.br; veronica.correa@adimax.com.br; paola.antunes@adimax.com.br; ",
+    cc: "faturamento.salto@adimax.com.br",
+    assunto: "Documentos da Carga"
+  },
+  {
+    nome: "Mello Transportes",
+    destinatario: "faturamento@mellotransportes.com.br; kauanpinheiro@mellotransportes.com.br; luishenrique@mellotransportes.com.br; tiago.oliveira@mellotransportes.com.br;  ",
+    cc: "faturamento.salto@adimax.com.br",
+    assunto: "Documentos da Carga"
+  },
+  {
+    nome: "Fernanda Ferraz Transportes",
+    destinatario: "ferraztransporte@outlook.com; leonardo@ferrazlog.com.br; miriele@ferrazlog.com.br; raphael@ferrazlog.com.br; financeiro@ferrazlog.com.br",
+    cc: "faturamento.salto@adimax.com.br",
+    assunto: "Documentos da Carga"
+  },
+  {
+    nome: "Scapol Distribuidora",
+    destinatario: "leonardo.soares@scapol.com.br; comercial@scapol.com.br; dlogistica@scapol.com.br ",
+    cc: "faturamento.salto@adimax.com.br",
+    assunto: "Documentos da Carga"
+  },
+  {
+    nome: "Pet Center Comércio",
+    destinatario: "camila.galastri@adimax.com.br; customerservice.slt@adimax.com.br; paola.antunes@adimax.com.br; gabriella.iglesias@adimax.com.br",
+    cc: "faturamento.salto@adimax.com.br",
+    assunto: "Documentos da Carga"
+  },
+  {
+    nome: "Pet Camp Comércio",
+    destinatario: "camila.galastri@adimax.com.br; customerservice.slt@adimax.com.br; gabriella.iglesias@adimax.com.br; paola.antunes@adimax.com.br",
+    cc: "faturamento.salto@adimax.com.br",
+    assunto: "Documentos da Carga"
+  },
+  {
+    nome: "Xavier Logistica",
+    destinatario: "comercial@xavierlog.com.br; financeiro@xavierlog.com.br; faturamento@xavierlog.com.br",
+    cc: "faturamento.salto@adimax.com.br",
+    assunto: "Documentos da Carga"
+  },
+  {
+    nome: "Sol da Terra Transportes",
+    destinatario: "daniel.romao@soldaterratransportes.com.br",
+    cc: "faturamento.salto@adimax.com.br",
+    assunto: "Documentos da Carga"
+  },
+  {
+    nome: "Teixeira Varajão Transportes",
+    destinatario: "nfe@teixeiravarajao.com.br; xml@ssw.inf.br ",
+    cc: "faturamento.salto@adimax.com.br",
+    assunto: "Documentos da Carga"
+  },
+  {
+    nome: "INOVA Rota Transportes",
+    destinatario: "leticia@exde.com.br; logistica@exde.com.br; paloma@exde.com.br; richard@exde.com.br;tofoli@exde.com.br",
+    cc: "faturamento.salto@adimax.com.br",
+    assunto: "Documentos da Carga"
+  },
+  {
+    nome: "Tudo de Bicho Comércio",
+    destinatario: "camila.galastri@adimax.com.br; customerservice.slt@adimax.com.br; gabriella.iglesias@adimax.com.br; paola.antunes@adimax.com.br",
+    cc: "faturamento.salto@adimax.com.br",
+    assunto: "Documentos da Carga"
+  }
+];
+
+/* ════════════════════════════════════════
+   STATE
+════════════════════════════════════════ */
+let selectedClient = null;
+let sessionCount   = 0;
+let envios         = [];
+
+const SUPABASE_URL = 'https://steshsjylmoiqwdcpytu.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0ZXNoc2p5bG1vaXF3ZGNweXR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNTA3MzEsImV4cCI6MjA5NzgyNjczMX0.7vPoFH69O_P66P2ZxIk3igppQl75mNb9GB9AURaTyd8';
+
+async function sbInsert(r) {
+  await fetch(`${SUPABASE_URL}/rest/v1/envios`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify(r)
+  });
+}
+
+async function sbSelect(filtros = {}) {
+  let url = `${SUPABASE_URL}/rest/v1/envios?order=id.desc&limit=500`;
+  if (filtros.texto) url += `&or=(carga.ilike.*${encodeURIComponent(filtros.texto)}*,cliente.ilike.*${encodeURIComponent(filtros.texto)}*,destinatario.ilike.*${encodeURIComponent(filtros.texto)}*)`;
+  if (filtros.data)  url += `&data=eq.${filtros.data}`;
+  const res = await fetch(url, {
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+  });
+  return res.json();
+}
+
+
+/* ════════════════════════════════════════
+   DARK MODE
+════════════════════════════════════════ */
+const darkToggle = document.getElementById('darkToggle');
+const darkIcon   = document.getElementById('darkIcon');
+
+function applyDark(on) {
+  document.body.classList.toggle('dark', on);
+  darkIcon.className = on ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+  localStorage.setItem('adimax_dark', on ? '1' : '');
+}
+applyDark(!!localStorage.getItem('adimax_dark'));
+darkToggle.addEventListener('click', () => applyDark(!document.body.classList.contains('dark')));
+
+/* ════════════════════════════════════════
+   TABS
+════════════════════════════════════════ */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'relatorio') renderReport();
+  });
+});
+
+/* ════════════════════════════════════════
+   SELECT DE CLIENTE
+════════════════════════════════════════ */
+const clientSelect = document.getElementById('clientSelect');
+const clientInfo   = document.getElementById('clientInfo');
+
+// Popular o <select> com os clientes
+CLIENTES.forEach((c, i) => {
+  const opt = document.createElement('option');
+  opt.value = i;
+  opt.textContent = c.nome;
+  clientSelect.appendChild(opt);
+});
+
+clientSelect.addEventListener('change', () => {
+  const idx = parseInt(clientSelect.value);
+  if (isNaN(idx)) return;
+  selectClient(idx);
+});
+
+function selectClient(idx) {
+  selectedClient = CLIENTES[idx];
+  document.getElementById('chipTo').textContent = selectedClient.destinatario;
+  document.getElementById('chipCc').textContent = selectedClient.cc || '—';
+  clientInfo.style.display = 'block';
+  updatePreview();
+}
+
+/* ════════════════════════════════════════
+   PRÉ-VISUALIZAÇÃO
+════════════════════════════════════════ */
+const cargaNum = document.getElementById('cargaNum');
+
+cargaNum.addEventListener('input', updatePreview);
+
+function updatePreview() {
+  const num       = cargaNum.value.trim();
+  const subjectEl = document.getElementById('prevSubjectVal');
+  const bodyEl    = document.getElementById('prevBody');
+  const prevTo    = document.getElementById('prevTo');
+  const prevCc    = document.getElementById('prevCc');
+
+  // E-mails na pré-visualização
+  if (selectedClient) {
+    prevTo.innerHTML = `<span style="font-weight:700; color:var(--orange-dk);">${selectedClient.destinatario}</span>`;
+    prevCc.innerHTML = selectedClient.cc
+      ? `<span style="color:var(--text-muted);">${selectedClient.cc}</span>`
+      : `<span style="color:var(--text-muted);">—</span>`;
+  } else {
+    prevTo.innerHTML = `<em class="preview-placeholder">[selecione um cliente]</em>`;
+    prevCc.innerHTML = `<em class="preview-placeholder">[—]</em>`;
+  }
+
+  // Assunto e corpo
+  const nomeCliente = selectedClient ? ` - <span style="color:var(--text-muted); font-weight:500;">${selectedClient.nome}</span>` : '';
+  if (num) {
+    subjectEl.innerHTML = ` Documentos da Carga - <span class="highlight">${num}</span>${nomeCliente}`;
+    bodyEl.innerHTML    = `Segue anexo com os arquivos XMLs e PDFs.<br><br>Carga: <span class="highlight">${num}</span>`;
+  } else {
+    subjectEl.innerHTML = ` Documentos da Carga - <em class="preview-placeholder">[número da carga]</em>${nomeCliente}`;
+    bodyEl.innerHTML    = `Segue anexo com os arquivos XMLs e PDFs.<br><br>Carga: <span class="preview-placeholder"><em>[número da carga]</em></span>`;
+  }
+}
+
+/* ════════════════════════════════════════
+   BOTÃO COPIAR
+════════════════════════════════════════ */
+document.getElementById('btnCopy').addEventListener('click', () => {
+  const num  = cargaNum.value.trim() || '[número da carga]';
+  const text = `Assunto: Documentos da Carga - ${num}\n\nSegue anexo com os arquivos XMLs e PDFs.\n\nCarga: ${num}`;
+  navigator.clipboard.writeText(text).then(() => showToast('Mensagem copiada!')).catch(() => showToast('Erro ao copiar.'));
+});
+
+/* ════════════════════════════════════════
+   BOTÃO ENVIAR / MAILTO
+════════════════════════════════════════ */
+document.getElementById('btnSend').addEventListener('click', () => {
+  const num = cargaNum.value.trim();
+
+  // Validação
+  if (!num) {
+    document.getElementById('cargaError').style.display = 'block';
+    cargaNum.focus();
+    return;
+  }
+  document.getElementById('cargaError').style.display = 'none';
+
+  if (!selectedClient) {
+    showToast('Selecione um cliente antes de continuar.', 'warning');
+    return;
+  }
+
+  const to      = selectedClient.destinatario;
+  const cc      = selectedClient.cc || '';
+  const subject = encodeURIComponent(`Documentos da Carga - ${num} - ${selectedClient.nome}`);
+  const body    = encodeURIComponent(`Segue anexo com os arquivos XMLs e PDFs.\n\nCarga: ${num}`);
+
+  const mailto = `mailto:${to}?${cc ? 'cc=' + cc + '&' : ''}subject=${subject}&body=${body}`;
+  window.location.href = mailto;
+
+  // Registrar envio
+  sessionCount++;
+  document.getElementById('sessionCount').textContent = sessionCount;
+
+  const now = new Date();
+  const registro = {
+    data: now.toLocaleDateString('pt-BR'),
+    hora: now.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}),
+    cliente: selectedClient.nome,
+    carga: num,
+    destinatario: to,
+    cc: selectedClient.cc || '',
+    status: 'Enviado'
+  };
+  sbInsert(registro).then(() => envios.unshift(registro));
+
+  // Pulse animation
+  const btn = document.getElementById('btnSend');
+  btn.classList.add('pulse');
+  setTimeout(() => btn.classList.remove('pulse'), 700);
+
+  showToast('Cliente de e-mail aberto com sucesso!');
+});
+
+/* ════════════════════════════════════════
+   RELATÓRIO
+════════════════════════════════════════ */
+async function renderReport(filterText = '', filterDate = '') {
+  const body = document.getElementById('reportBody');
+  body.innerHTML = `<tr><td colspan="6" class="td-empty"><i class="fa-solid fa-spinner fa-spin" style="margin-right:6px;"></i>Carregando...</td></tr>`;
+
+  let dataFiltro = '';
+  if (filterDate) {
+    const [y, m, d] = filterDate.split('-');
+    dataFiltro = `${d}/${m}/${y}`;
+  }
+
+  const data  = await sbSelect({ texto: filterText, data: dataFiltro });
+  const todos = await sbSelect();
+
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  document.getElementById('statTotal').textContent    = todos.length;
+  document.getElementById('statHoje').textContent     = todos.filter(e => e.data === hoje).length;
+  document.getElementById('statClientes').textContent = [...new Set(todos.map(e => e.cliente))].length;
+
+  if (!data.length) {
+    body.innerHTML = `<tr><td colspan="6" class="td-empty"><i class="fa-solid fa-inbox" style="margin-right:6px;"></i>Nenhum registro encontrado.</td></tr>`;
+    return;
+  }
+
+  body.innerHTML = data.map((e, i) => `
+    <tr>
+      <td style="color:var(--text-muted); font-size:.75rem;">${data.length - i}</td>
+      <td style="white-space:nowrap;">${e.data} <span style="color:var(--text-muted);">${e.hora}</span></td>
+      <td><strong>${e.cliente}</strong></td>
+      <td class="td-num">${e.carga}</td>
+      <td style="font-size:.78rem;">${e.destinatario}</td>
+      <td><span class="badge badge-sent"><i class="fa-solid fa-check" style="margin-right:3px;"></i>${e.status}</span></td>
+    </tr>
+  `).join('');
+}
+
+document.getElementById('filterText').addEventListener('input', applyFilters);
+document.getElementById('filterDate').addEventListener('input', applyFilters);
+
+function applyFilters() {
+  renderReport(
+    document.getElementById('filterText').value,
+    document.getElementById('filterDate').value
+  );
+}
+
+document.getElementById('btnClearFilter').addEventListener('click', () => {
+  document.getElementById('filterText').value = '';
+  document.getElementById('filterDate').value = '';
+  renderReport();
+});
+
+// Export CSV
+document.getElementById('btnExport').addEventListener('click', async () => {
+  const todos = await sbSelect();
+  if (!todos.length) { showToast('Nenhum dado para exportar.', 'warning'); return; }
+  const header = 'N°,Data,Hora,Cliente,Carga,Destinatário,CC,Status\n';
+  const rows = todos.map((e, i) =>
+    `${i+1},"${e.data}","${e.hora}","${e.cliente}","${e.carga}","${e.destinatario}","${e.cc||''}","${e.status}"`
+  ).join('\n');
+  const blob = new Blob(['\uFEFF' + header + rows], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `envios_faturamento_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  showToast('CSV exportado com sucesso!');
+});
+
+/* ════════════════════════════════════════
+   TOAST
+════════════════════════════════════════ */
+let toastTimer;
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>
