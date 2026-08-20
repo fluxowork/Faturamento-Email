@@ -8,6 +8,7 @@
   <link rel="icon" type="image/png" href="favicon.png"/>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     /* ── Reset & Base ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -596,6 +597,80 @@
       margin-left: 8px;
       vertical-align: middle;
     }
+
+    /* ── Anexos ── */
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-sm);
+      padding: 24px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      background: var(--bg);
+    }
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--orange);
+      background: rgba(245,166,35,.06);
+    }
+    .dropzone i {
+      font-size: 1.6rem;
+      color: var(--orange);
+      margin-bottom: 8px;
+      display: block;
+    }
+    .dropzone .dz-text {
+      font-size: .85rem;
+      font-weight: 500;
+      color: var(--text);
+    }
+    .dropzone .dz-sub {
+      font-size: .72rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+    .file-list {
+      margin-top: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .file-chip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 9px 12px;
+      font-size: .82rem;
+    }
+    .file-chip i.fa-file {
+      color: var(--orange-dk);
+      font-size: .95rem;
+      flex-shrink: 0;
+    }
+    .file-chip .file-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .file-chip .file-size {
+      color: var(--text-muted);
+      font-size: .72rem;
+      flex-shrink: 0;
+    }
+    .file-chip .file-remove {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: .85rem;
+      flex-shrink: 0;
+      padding: 2px 6px;
+      transition: color .2s;
+    }
+    .file-chip .file-remove:hover { color: #DC2626; }
   </style>
 </head>
 <body>
@@ -727,6 +802,33 @@
         <div id="cargaError" style="color:#DC2626; font-size:.75rem; margin-top:5px; display:none;">
           <i class="fa-solid fa-triangle-exclamation"></i> Informe o número da carga antes de continuar.
         </div>
+      </div>
+    </div>
+
+    <!-- Card 2.5: Anexos -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon"><i class="fa-solid fa-paperclip"></i></div>
+        <div>
+          <div class="card-title">Anexos</div>
+          <div class="card-subtitle">XMLs, PDFs ou outros arquivos da carga</div>
+        </div>
+      </div>
+
+      <input type="file" id="fileInput" multiple style="display:none;"/>
+      <div class="dropzone" id="dropzone">
+        <i class="fa-solid fa-cloud-arrow-up"></i>
+        <div class="dz-text">Clique para escolher os arquivos</div>
+        <div class="dz-sub">ou arraste e solte aqui</div>
+      </div>
+
+      <div class="file-list" id="fileList"></div>
+
+      <div style="font-size:.75rem; color:var(--text-muted); margin-top:12px; line-height:1.5;">
+        <i class="fa-solid fa-circle-info" style="margin-right:4px;"></i>
+        Ao clicar em "Enviar E-mail", os arquivos serão compactados automaticamente em um
+        <strong>.zip</strong> e baixados para a pasta <strong>Downloads</strong>. Depois é só arrastar
+        o .zip para o e-mail que vai abrir.
       </div>
     </div>
 
@@ -1150,6 +1252,91 @@ function selectClient(idx) {
 }
 
 /* ════════════════════════════════════════
+   ANEXOS
+════════════════════════════════════════ */
+let selectedFiles = [];
+
+const fileInput = document.getElementById('fileInput');
+const dropzone  = document.getElementById('dropzone');
+const fileList  = document.getElementById('fileList');
+
+dropzone.addEventListener('click', () => fileInput.click());
+
+fileInput.addEventListener('change', () => {
+  addFiles(fileInput.files);
+  fileInput.value = ''; // permite selecionar o mesmo arquivo de novo depois de remover
+});
+
+['dragenter', 'dragover'].forEach(evt => {
+  dropzone.addEventListener(evt, e => {
+    e.preventDefault();
+    dropzone.classList.add('dragover');
+  });
+});
+['dragleave', 'drop'].forEach(evt => {
+  dropzone.addEventListener(evt, e => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+  });
+});
+dropzone.addEventListener('drop', e => {
+  if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+});
+
+function addFiles(fileListObj) {
+  Array.from(fileListObj).forEach(f => {
+    // Evita duplicar o mesmo arquivo (mesmo nome + tamanho)
+    const jaExiste = selectedFiles.some(sf => sf.name === f.name && sf.size === f.size);
+    if (!jaExiste) selectedFiles.push(f);
+  });
+  renderFileList();
+}
+
+function removeFile(idx) {
+  selectedFiles.splice(idx, 1);
+  renderFileList();
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function renderFileList() {
+  if (!selectedFiles.length) {
+    fileList.innerHTML = '';
+    return;
+  }
+  fileList.innerHTML = selectedFiles.map((f, i) => `
+    <div class="file-chip">
+      <i class="fa-solid fa-file"></i>
+      <span class="file-name">${f.name}</span>
+      <span class="file-size">${formatFileSize(f.size)}</span>
+      <button type="button" class="file-remove" onclick="removeFile(${i})" title="Remover">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+  `).join('');
+}
+
+// Compacta os arquivos selecionados em um único .zip e baixa
+async function baixarAnexos(num) {
+  const zip = new JSZip();
+  selectedFiles.forEach(file => zip.file(file.name, file));
+
+  const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Carga_${num}_Anexos.zip`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+/* ════════════════════════════════════════
    PRÉ-VISUALIZAÇÃO
 ════════════════════════════════════════ */
 const cargaNum = document.getElementById('cargaNum');
@@ -1205,7 +1392,7 @@ const confirmCheck    = document.getElementById('confirmCheck');
 const btnConfirmSend  = document.getElementById('btnConfirmSend');
 const btnCancelConfirm = document.getElementById('btnCancelConfirm');
 
-btnSend.addEventListener('click', () => {
+btnSend.addEventListener('click', async () => {
   const num = cargaNum.value.trim();
   const faturista = faturistaSelect.value;
 
@@ -1235,7 +1422,26 @@ btnSend.addEventListener('click', () => {
   const body    = encodeURIComponent(`Olá,\n\n Segue anexo com os arquivos XMLs e PDFs:\n\nCarga: ${num}`);
 
   const mailto = `mailto:${to}?${cc ? 'cc=' + cc + '&' : ''}subject=${subject}&body=${body}`;
-  window.location.href = mailto;
+
+  if (selectedFiles.length) {
+    btnSend.disabled = true;
+    const originalHtml = btnSend.innerHTML;
+    btnSend.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Compactando arquivos...';
+    try {
+      await baixarAnexos(num);
+    } catch (err) {
+      showToast('Erro ao compactar os arquivos. Tente novamente.', 'warning');
+      btnSend.disabled = false;
+      btnSend.innerHTML = originalHtml;
+      return;
+    }
+    btnSend.innerHTML = originalHtml;
+    btnSend.disabled = false;
+    // Pequeno atraso para o download do .zip começar antes do app de e-mail abrir
+    setTimeout(() => { window.location.href = mailto; }, 400);
+  } else {
+    window.location.href = mailto;
+  }
 
   // Contador de sessão (e-mails gerados, independente de já terem sido registrados)
   sessionCount++;
@@ -1297,6 +1503,8 @@ btnConfirmSend.addEventListener('click', async () => {
   selectedClient = null;
   clientInfo.style.display = 'none';
   clientSelect.value = '';
+  selectedFiles = [];
+  renderFileList();
   updatePreview();
 
   // Pulse animation
