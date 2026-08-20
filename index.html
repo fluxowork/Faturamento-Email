@@ -29,16 +29,6 @@
       --radius-sm: 8px;
     }
 
-    /* Dark mode */
-    body.dark {
-      --bg:     #111827;
-      --card:   #1F2937;
-      --text:   #F9FAFB;
-      --text-muted: #9CA3AF;
-      --border: #374151;
-      --shadow: 0 2px 12px rgba(0,0,0,.4);
-    }
-
     body {
       font-family: 'Poppins', sans-serif;
       background: var(--bg);
@@ -372,7 +362,6 @@
       opacity: 1;
       transform: translateX(-50%) translateY(0);
     }
-    body.dark #toast { background: #374151; }
 
     /* ── Tab panels ── */
     .tab-panel { display: none; }
@@ -484,7 +473,6 @@
       font-weight: 600;
     }
     .badge-sent { background: #D1FAE5; color: #065F46; }
-    body.dark .badge-sent { background: #064E3B; color: #6EE7B7; }
 
     /* ── Footer ── */
     footer {
@@ -685,9 +673,9 @@
     </div>
   </div>
   <div class="header-actions">
-    <button class="btn-icon" id="darkToggle" title="Alternar modo escuro">
-      <i class="fa-solid fa-moon" id="darkIcon"></i>
-    </button>
+    <a href="admin.html" class="btn-icon" title="Administração de cadastros" style="text-decoration:none;">
+      <i class="fa-solid fa-gear"></i>
+    </a>
   </div>
 </header>
 
@@ -994,124 +982,12 @@
 
 <script>
 /* ════════════════════════════════════════
-   CLIENTES — adicione novos aqui facilmente
+   CLIENTES / TRANSPORTADORAS e FATURISTAS
+   Agora carregados do Supabase (editáveis pela tela
+   de administração em admin.html)
 ════════════════════════════════════════ */
-const CLIENTES = [
-  {
-    nome: "Expresso Descalvado Transportes",
-    tipo: "transportadora",
-    destinatario: "descalvado.cte@adimax.com.br",
-    cc: "faturamento.salto@adimax.com.br",
-    assunto: "Documentos da Carga"
-  },
-  {
-    nome: "Cobasi",
-    tipo: "cliente",
-    destinatario: "camila.galastri@adimax.com.br; veronica.correa@adimax.com.br; paola.antunes@adimax.com.br",
-    cc: "faturamento.salto@adimax.com.br",
-    assunto: "Documentos da Carga"
-  },
-  {
-    nome: "Mello Transportes",
-    tipo: "transportadora",
-    destinatario: "faturamento@mellotransportes.com.br; kauanpinheiro@mellotransportes.com.br; luishenrique@mellotransportes.com.br; tiago.oliveira@mellotransportes.com.br",
-    cc: "faturamento.salto@adimax.com.br",
-    assunto: "Documentos da Carga"
-  },
-  {
-    nome: "Fernanda Ferraz Transportes",
-    tipo: "transportadora",
-    destinatario: "ferraztransporte@outlook.com; leonardo@ferrazlog.com.br; miriele@ferrazlog.com.br; raphael@ferrazlog.com.br; financeiro@ferrazlog.com.br; fernanda@ferrazlog.com.br; monitoramento@ferrazlog.com.br",
-    cc: "faturamento.salto@adimax.com.br; transporte.slt@adimax.com.br",
-    assunto: "Documentos da Carga"
-  },
-  {
-    nome: "Scapol Distribuidora",
-    tipo: "cliente",
-    destinatario: "leonardo.soares@scapol.com.br; comercial@scapol.com.br; dlogistica@scapol.com.br",
-    cc: "faturamento.salto@adimax.com.br",
-    assunto: "Documentos da Carga"
-  },
-  {
-    nome: "Pet Center Comércio",
-    tipo: "cliente",
-    destinatario: "camila.galastri@adimax.com.br; customerservice.slt@adimax.com.br; paola.antunes@adimax.com.br; gabriella.iglesias@adimax.com.br",
-    cc: "faturamento.salto@adimax.com.br",
-    assunto: "Documentos da Carga"
-  },
-  {
-    nome: "Pet Camp Comércio",
-    tipo: "cliente",
-    destinatario: "camila.galastri@adimax.com.br; customerservice.slt@adimax.com.br; gabriella.iglesias@adimax.com.br; paola.antunes@adimax.com.br",
-    cc: "faturamento.salto@adimax.com.br",
-    assunto: "Documentos da Carga"
-  },
-  {
-    nome: "Xavier Logistica",
-    tipo: "transportadora",
-    destinatario: "comercial@xavierlog.com.br; financeiro@xavierlog.com.br; faturamento@xavierlog.com.br",
-    cc: "faturamento.salto@adimax.com.br",
-    assunto: "Documentos da Carga"
-  },
-  {
-    nome: "Sol da Terra Transportes",
-    tipo: "transportadora",
-    destinatario: "daniel.romao@soldaterratransportes.com.br",
-    cc: "faturamento.salto@adimax.com.br",
-    assunto: "Documentos da Carga"
-  },
-  {
-    nome: "Teixeira Varajão Transportes",
-    tipo: "transportadora",
-    destinatario: "nfe@teixeiravarajao.com.br; xml@ssw.inf.br ",
-    cc: "faturamento.salto@adimax.com.br",
-    assunto: "Documentos da Carga"
-  },
-  {
-    nome: "INOVA Rota Transportes",
-    tipo: "transportadora",
-    destinatario: "leticia@exde.com.br; logistica@exde.com.br; paloma@exde.com.br; richard@exde.com.br;tofoli@exde.com.br",
-    cc: "faturamento.salto@adimax.com.br",
-    assunto: "Documentos da Carga"
-  },
-  {
-    nome: "Tudo de Bicho Comércio",
-    tipo: "cliente",
-    destinatario: "camila.galastri@adimax.com.br; customerservice.slt@adimax.com.br; gabriella.iglesias@adimax.com.br; paola.antunes@adimax.com.br",
-    cc: "faturamento.salto@adimax.com.br",
-    assunto: "Documentos da Carga"
-  },
-  {
-    nome: "JM Transportes",
-    tipo: "transportadora",
-    destinatario: "valter.regal@jmdistribuicao.com.br; emissoes@jmdistribuicao.com.br; Henrique.ferreira@jmdistribuicao.com.br; gabriela.oliveira@jmdistribuicao.com.br",
-    cc: "ana.goncalves@adimax.com.br; jonathan.rodrigues@adimax.com.br; faturamento.salto@adimax.com.br",
-    assunto: "Documentos da Carga"
-  },
-  {
-    nome: "VR Nogueira Transportes",
-    tipo: "transportadora",
-    destinatario: "xmladmlosangelo.porto@gmail.com; waleska.ascurra@adimax.com.br; customerservice.slt@adimax.com.br; transporte.slt@adimax.com.br",
-    cc: "admlosangelo.porto@gmail.com; faturamento.salto@adimax.com.br",
-    assunto: "Documentos da Carga"
-  }
-];
-
-/* ════════════════════════════════════════
-   FATURISTAS — em ordem alfabética
-════════════════════════════════════════ */
-const FATURISTAS = [
-  "Aline Oliveira",
-  "Camila Siqueira",
-  "Denise Rodrigues",
-  "Gisele Nogueira",
-  "João Victor",
-  "Michel Nascimento",
-  "Nayane Furquim",
-  "Nycollas Nascimento",
-  "Rodrigo Silva",
-  "Vitória Santos"
-];
+let CLIENTES = [];
+let FATURISTAS = [];
 
 /* ════════════════════════════════════════
    STATE
@@ -1147,21 +1023,6 @@ async function sbSelect(filtros = {}) {
   return res.json();
 }
 
-
-/* ════════════════════════════════════════
-   DARK MODE
-════════════════════════════════════════ */
-const darkToggle = document.getElementById('darkToggle');
-const darkIcon   = document.getElementById('darkIcon');
-
-function applyDark(on) {
-  document.body.classList.toggle('dark', on);
-  darkIcon.className = on ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
-  localStorage.setItem('adimax_dark', on ? '1' : '');
-}
-applyDark(!!localStorage.getItem('adimax_dark'));
-darkToggle.addEventListener('click', () => applyDark(!document.body.classList.contains('dark')));
-
 /* ════════════════════════════════════════
    TABS
 ════════════════════════════════════════ */
@@ -1180,12 +1041,15 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 ════════════════════════════════════════ */
 const faturistaSelect = document.getElementById('faturistaSelect');
 
-FATURISTAS.forEach(nome => {
-  const opt = document.createElement('option');
-  opt.value = nome;
-  opt.textContent = nome;
-  faturistaSelect.appendChild(opt);
-});
+function popularFaturistas() {
+  faturistaSelect.innerHTML = '<option value="" disabled selected>— Selecione o faturista —</option>';
+  FATURISTAS.forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f.nome;
+    opt.textContent = f.nome;
+    faturistaSelect.appendChild(opt);
+  });
+}
 
 faturistaSelect.addEventListener('change', () => {
   if (faturistaSelect.value) {
@@ -1210,10 +1074,10 @@ function popularSelect(tipo) {
   optDefault.textContent = tipo === 'cliente' ? '— Selecione um cliente —' : '— Selecione uma transportadora —';
   clientSelect.appendChild(optDefault);
 
-  CLIENTES.forEach((c, i) => {
+  CLIENTES.forEach(c => {
     if (c.tipo !== tipo) return;
     const opt = document.createElement('option');
-    opt.value = i;
+    opt.value = c.id;
     opt.textContent = c.nome;
     clientSelect.appendChild(opt);
   });
@@ -1235,21 +1099,54 @@ document.querySelectorAll('.segmented-btn').forEach(btn => {
   });
 });
 
-popularSelect(tipoAtual);
-
 clientSelect.addEventListener('change', () => {
-  const idx = parseInt(clientSelect.value);
-  if (isNaN(idx)) return;
-  selectClient(idx);
+  const id = parseInt(clientSelect.value);
+  if (isNaN(id)) return;
+  selectClient(id);
 });
 
-function selectClient(idx) {
-  selectedClient = CLIENTES[idx];
+function selectClient(id) {
+  selectedClient = CLIENTES.find(c => c.id === id);
+  if (!selectedClient) return;
   document.getElementById('chipTo').textContent = selectedClient.destinatario;
   document.getElementById('chipCc').textContent = selectedClient.cc || '—';
   clientInfo.style.display = 'block';
   updatePreview();
 }
+
+/* ════════════════════════════════════════
+   CARREGAR CADASTROS DO SUPABASE
+════════════════════════════════════════ */
+async function carregarCadastros() {
+  clientSelect.innerHTML = '<option value="" disabled selected>Carregando...</option>';
+  faturistaSelect.innerHTML = '<option value="" disabled selected>Carregando...</option>';
+  clientSelect.disabled = true;
+  faturistaSelect.disabled = true;
+
+  try {
+    const [resClientes, resFaturistas] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/clientes?select=*&order=nome.asc`, {
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+      }),
+      fetch(`${SUPABASE_URL}/rest/v1/faturistas?select=*&order=nome.asc`, {
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+      })
+    ]);
+    if (!resClientes.ok || !resFaturistas.ok) throw new Error('Falha ao carregar cadastros');
+    CLIENTES = await resClientes.json();
+    FATURISTAS = await resFaturistas.json();
+  } catch (err) {
+    showToast('Erro ao carregar cadastros. Recarregue a página.', 'warning');
+    console.error(err);
+  } finally {
+    clientSelect.disabled = false;
+    faturistaSelect.disabled = false;
+    popularSelect(tipoAtual);
+    popularFaturistas();
+  }
+}
+
+carregarCadastros();
 
 /* ════════════════════════════════════════
    ANEXOS
@@ -1595,9 +1492,10 @@ document.getElementById('btnExport').addEventListener('click', async () => {
    TOAST
 ════════════════════════════════════════ */
 let toastTimer;
-function showToast(msg) {
+function showToast(msg, tipo) {
   const toast = document.getElementById('toast');
   document.getElementById('toastMsg').textContent = msg;
+  toast.style.background = tipo === 'warning' ? '#7F1D1D' : '#1F2937';
   toast.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => toast.classList.remove('show'), 2800);
