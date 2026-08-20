@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Administração - Faturamento</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --orange:    #F5A623;
+      --orange-d:  #E29412;
+      --orange-dk: #C67E00;
+      --white:     #FFFFFF;
+      --bg:        #F7F8FA;
+      --text:      #1F1F1F;
+      --text-muted:#6B7280;
+      --border:    #E5E5E5;
+      --card:      #FFFFFF;
+      --shadow:    0 2px 12px rgba(0,0,0,.08);
+      --shadow-lg: 0 8px 32px rgba(0,0,0,.12);
+      --radius:    14px;
+      --radius-sm: 8px;
+    }
+    body.dark {
+      --bg:     #111827;
+      --card:   #1F2937;
+      --text:   #F9FAFB;
+      --text-muted: #9CA3AF;
+      --border: #374151;
+      --shadow: 0 2px 12px rgba(0,0,0,.4);
+    }
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--orange);
+      box-shadow: 0 2px 16px rgba(0,0,0,.15);
+      padding: 0 24px; height: 68px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    header h1 { font-size: 1.05rem; color: #fff; display: flex; align-items: center; gap: 10px; }
+    .btn-icon {
+      background: rgba(255,255,255,.2); border: none; border-radius: 50%;
+      width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: #fff; font-size: .95rem; transition: background .2s;
+    }
+    .btn-icon:hover { background: rgba(255,255,255,.35); }
+
+    main { max-width: 900px; margin: 0 auto; padding: 28px 20px 60px; }
+
+    /* ── Login screen ── */
+    .login-wrap {
+      min-height: calc(100vh - 68px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .login-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border);
+      padding: 36px 30px;
+      width: 100%;
+      max-width: 380px;
+      text-align: center;
+    }
+    .login-card i.fa-lock { font-size: 2rem; color: var(--orange); margin-bottom: 12px; }
+    .login-card h2 { font-size: 1.15rem; margin-bottom: 6px; }
+    .login-card p { font-size: .82rem; color: var(--text-muted); margin-bottom: 24px; }
+
+    label { display: block; font-size: .78rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; text-align: left; text-transform: uppercase; letter-spacing: .4px; }
+    .field { margin-bottom: 16px; }
+    input[type="text"], input[type="email"], input[type="password"], select, textarea {
+      width: 100%; padding: 11px 13px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+      font-family: 'Poppins', sans-serif; font-size: .9rem; background: var(--bg); color: var(--text);
+      outline: none; transition: border-color .2s, box-shadow .2s;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(245,166,35,.15); }
+    textarea { resize: vertical; min-height: 60px; }
+
+    .btn-primary {
+      width: 100%; padding: 13px 20px;
+      background: linear-gradient(135deg, var(--orange) 0%, var(--orange-d) 100%);
+      border: none; border-radius: var(--radius-sm); color: #fff;
+      font-family: 'Poppins', sans-serif; font-size: .92rem; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: filter .2s, transform .15s; box-shadow: 0 4px 14px rgba(226,148,18,.4);
+    }
+    .btn-primary:hover { filter: brightness(1.06); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+    .btn-secondary {
+      padding: 9px 16px; background: transparent; border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text); font-family: 'Poppins', sans-serif;
+      font-size: .82rem; font-weight: 500; cursor: pointer;
+      display: flex; align-items: center; gap: 7px; transition: border-color .2s, background .2s;
+    }
+    .btn-secondary:hover { border-color: var(--orange); background: rgba(245,166,35,.06); }
+    .btn-danger { color: #DC2626; border-color: #FCA5A5; }
+    .btn-danger:hover { background: rgba(220,38,38,.06); border-color: #DC2626; }
+
+    .error-msg { color: #DC2626; font-size: .8rem; margin-top: 10px; display: none; }
+
+    /* ── App screens ── */
+    #appScreen { display: none; }
+
+    .tab-nav {
+      background: var(--card); border-bottom: 1px solid var(--border);
+      display: flex; padding: 0 4px; justify-content: center; margin-bottom: 24px;
+      border-radius: var(--radius-sm); box-shadow: var(--shadow);
+    }
+    .tab-btn {
+      background: none; border: none; cursor: pointer; padding: 14px 20px;
+      font-family: 'Poppins', sans-serif; font-size: .85rem; font-weight: 500; color: var(--text-muted);
+      border-bottom: 3px solid transparent; transition: color .2s, border-color .2s;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .tab-btn.active { color: var(--orange-dk); border-bottom-color: var(--orange); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .card {
+      background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
+      padding: 22px; margin-bottom: 20px; border: 1px solid var(--border);
+    }
+    .card-title { font-size: .95rem; font-weight: 600; margin-bottom: 4px; }
+    .card-subtitle { font-size: .75rem; color: var(--text-muted); margin-bottom: 18px; }
+
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .row > .field { flex: 1; min-width: 160px; }
+
+    .list-item {
+      display: flex; align-items: center; gap: 12px;
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 12px 14px; margin-bottom: 10px; background: var(--bg);
+    }
+    .list-item .info { flex: 1; min-width: 0; }
+    .list-item .nome { font-weight: 600; font-size: .88rem; }
+    .list-item .detalhe { font-size: .75rem; color: var(--text-muted); word-break: break-all; margin-top: 2px; }
+    .list-item .actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .list-item .icon-btn {
+      width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--card); cursor: pointer; display: flex; align-items: center; justify-content: center;
+      color: var(--text-muted); transition: border-color .2s, color .2s;
+    }
+    .list-item .icon-btn:hover.edit { color: var(--orange-dk); border-color: var(--orange); }
+    .list-item .icon-btn:hover.del { color: #DC2626; border-color: #DC2626; }
+
+    .badge-tipo {
+      display: inline-block; font-size: .65rem; font-weight: 700; padding: 2px 8px; border-radius: 20px;
+      text-transform: uppercase; letter-spacing: .4px; background: rgba(245,166,35,.15); color: var(--orange-dk);
+      margin-left: 6px; vertical-align: middle;
+    }
+
+    .empty-msg { text-align: center; padding: 30px; color: var(--text-muted); font-size: .85rem; font-style: italic; }
+
+    #toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: #1F2937; color: #fff; padding: 12px 22px; border-radius: 10px; font-size: .85rem; font-weight: 500;
+      box-shadow: 0 6px 24px rgba(0,0,0,.25); opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s;
+      display: flex; align-items: center; gap: 8px; z-index: 999;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .form-actions { display: flex; gap: 10px; margin-top: 6px; flex-wrap: wrap; }
+    .form-actions .btn-primary { flex: 1; min-width: 140px; }
+
+    .segmented {
+      display: flex; background: var(--bg); border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+      padding: 4px; gap: 4px; margin-bottom: 16px;
+    }
+    .segmented-btn {
+      flex: 1; padding: 9px 10px; border: none; background: transparent; border-radius: 6px;
+      font-family: 'Poppins', sans-serif; font-size: .8rem; font-weight: 600; color: var(--text-muted);
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: background .2s, color .2s;
+    }
+    .segmented-btn.active { background: linear-gradient(135deg, var(--orange) 0%, var(--orange-d) 100%); color: #fff; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1><i class="fa-solid fa-gear"></i> Administração - Cadastros</h1>
+  <div style="display:flex; gap:8px;">
+    <button class="btn-icon" id="darkToggle" title="Modo escuro"><i class="fa-solid fa-moon" id="darkIcon"></i></button>
+    <button class="btn-icon" id="btnLogout" title="Sair" style="display:none;"><i class="fa-solid fa-right-from-bracket"></i></button>
+  </div>
+</header>
+
+<!-- ══════════════ LOGIN ══════════════ -->
+<div class="login-wrap" id="loginScreen">
+  <div class="login-card">
+    <i class="fa-solid fa-lock"></i>
+    <h2>Acesso Restrito</h2>
+    <p>Entre com seu login para gerenciar clientes, transportadoras e faturistas.</p>
+    <div class="field">
+      <label for="loginEmail">E-mail</label>
+      <input type="email" id="loginEmail" placeholder="seu.email@adimax.com.br" autocomplete="username"/>
+    </div>
+    <div class="field">
+      <label for="loginPassword">Senha</label>
+      <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password"/>
+    </div>
+    <button class="btn-primary" id="btnLogin">
+      <i class="fa-solid fa-right-to-bracket"></i> Entrar
+    </button>
+    <div class="error-msg" id="loginError"></div>
+  </div>
+</div>
+
+<!-- ══════════════ APP ══════════════ -->
+<div id="appScreen">
+  <main>
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="cadastro"><i class="fa-solid fa-building-user"></i> Clientes / Transportadoras</button>
+      <button class="tab-btn" data-tab="faturistas"><i class="fa-solid fa-user-tie"></i> Faturistas</button>
+    </nav>
+
+    <!-- ─── TAB: CLIENTES/TRANSPORTADORAS ─── -->
+    <div class="tab-panel active" id="panel-cadastro">
+
+      <div class="card">
+        <div class="card-title" id="formCadastroTitle">Novo Cadastro</div>
+        <div class="card-subtitle">Preencha os dados do cliente ou transportadora</div>
+
+        <input type="hidden" id="cadastroId"/>
+
+        <div class="segmented" id="tipoFormToggle">
+          <button type="button" class="segmented-btn active" data-tipo="cliente"><i class="fa-solid fa-store"></i> Cliente</button>
+          <button type="button" class="segmented-btn" data-tipo="transportadora"><i class="fa-solid fa-truck"></i> Transportadora</button>
+        </div>
+
+        <div class="field">
+          <label for="cadastroNome">Nome*</label>
+          <input type="text" id="cadastroNome" placeholder="Ex.: Mello Transportes"/>
+        </div>
+        <div class="field">
+          <label for="cadastroDestinatario">Destinatário(s)* — separe múltiplos e-mails por ;</label>
+          <textarea id="cadastroDestinatario" placeholder="email1@empresa.com; email2@empresa.com"></textarea>
+        </div>
+        <div class="field">
+          <label for="cadastroCc">CC (opcional) — separe múltiplos e-mails por ;</label>
+          <textarea id="cadastroCc" placeholder="faturamento.salto@adimax.com.br"></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn-primary" id="btnSalvarCadastro"><i class="fa-solid fa-floppy-disk"></i> Salvar</button>
+          <button class="btn-secondary" id="btnCancelarCadastro" style="display:none;"><i class="fa-solid fa-xmark"></i> Cancelar edição</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Cadastrados</div>
+        <div class="card-subtitle" id="cadastroCount">Carregando...</div>
+        <div id="cadastroList"></div>
+      </div>
+    </div>
+
+    <!-- ─── TAB: FATURISTAS ─── -->
+    <div class="tab-panel" id="panel-faturistas">
+
+      <div class="card">
+        <div class="card-title" id="formFaturistaTitle">Novo Faturista</div>
+        <div class="card-subtitle">Adicione o nome do responsável pelo envio</div>
+
+        <input type="hidden" id="faturistaId"/>
+
+        <div class="field">
+          <label for="faturistaNome">Nome*</label>
+          <input type="text" id="faturistaNome" placeholder="Ex.: João Victor"/>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn-primary" id="btnSalvarFaturista"><i class="fa-solid fa-floppy-disk"></i> Salvar</button>
+          <button class="btn-secondary" id="btnCancelarFaturista" style="display:none;"><i class="fa-solid fa-xmark"></i> Cancelar edição</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Cadastrados</div>
+        <div class="card-subtitle" id="faturistaCount">Carregando...</div>
+        <div id="faturistaList"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast"><i class="fa-solid fa-check-circle"></i> <span id="toastMsg">Salvo!</span></div>
+
+<script>
+/* ════════════════════════════════════════
+   CONFIG SUPABASE
+════════════════════════════════════════ */
+const SUPABASE_URL = 'https://steshsjylmoiqwdcpytu.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0ZXNoc2p5bG1vaXF3ZGNweXR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNTA3MzEsImV4cCI6MjA5NzgyNjczMX0.7vPoFH69O_P66P2ZxIk3igppQl75mNb9GB9AURaTyd8';
+
+let accessToken = sessionStorage.getItem('adimax_admin_token') || null;
+
+/* ════════════════════════════════════════
+   DARK MODE
+════════════════════════════════════════ */
+const darkToggle = document.getElementById('darkToggle');
+const darkIcon   = document.getElementById('darkIcon');
+function applyDark(on) {
+  document.body.classList.toggle('dark', on);
+  darkIcon.className = on ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+  localStorage.setItem('adimax_dark', on ? '1' : '');
+}
+applyDark(!!localStorage.getItem('adimax_dark'));
+darkToggle.addEventListener('click', () => applyDark(!document.body.classList.contains('dark')));
+
+/* ════════════════════════════════════════
+   TOAST
+════════════════════════════════════════ */
+let toastTimer;
+function showToast(msg, isError = false) {
+  const toast = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  toast.style.background = isError ? '#7F1D1D' : '#1F2937';
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 3200);
+}
+
+/* ════════════════════════════════════════
+   AUTENTICAÇÃO (Supabase Auth via REST)
+════════════════════════════════════════ */
+const loginScreen = document.getElementById('loginScreen');
+const appScreen   = document.getElementById('appScreen');
+const btnLogout   = document.getElementById('btnLogout');
+
+async function login(email, password) {
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+    body: JSON.stringify({ email, password })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error_description || data.msg || 'Login ou senha inválidos.');
+  accessToken = data.access_token;
+  sessionStorage.setItem('adimax_admin_token', accessToken);
+  return data;
+}
+
+function logout() {
+  accessToken = null;
+  sessionStorage.removeItem('adimax_admin_token');
+  showApp(false);
+}
+
+async function checkSession() {
+  if (!accessToken) { showApp(false); return; }
+  // Valida o token tentando buscar o usuário logado
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${accessToken}` }
+  });
+  if (res.ok) {
+    showApp(true);
+  } else {
+    accessToken = null;
+    sessionStorage.removeItem('adimax_admin_token');
+    showApp(false);
+  }
+}
+
+function showApp(loggedIn) {
+  loginScreen.style.display = loggedIn ? 'none' : 'flex';
+  appScreen.style.display   = loggedIn ? 'block' : 'none';
+  btnLogout.style.display   = loggedIn ? 'flex' : 'none';
+  if (loggedIn) {
+    carregarCadastros();
+    carregarFaturistas();
+  }
+}
+
+document.getElementById('btnLogin').addEventListener('click', async () => {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  errEl.style.display = 'none';
+
+  if (!email || !password) {
+    errEl.textContent = 'Preencha e-mail e senha.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const btn = document.getElementById('btnLogin');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Entrando...';
+
+  try {
+    await login(email, password);
+    showApp(true);
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Entrar';
+  }
+});
+
+document.getElementById('loginPassword').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('btnLogin').click();
+});
+
+btnLogout.addEventListener('click', logout);
+
+checkSession();
+
+/* ════════════════════════════════════════
+   TABS
+════════════════════════════════════════ */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+/* ════════════════════════════════════════
+   HELPERS DE REQUISIÇÃO AUTENTICADA
+════════════════════════════════════════ */
+async function sbAuthFetch(path, options = {}) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...options,
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      ...(options.headers || {})
+    }
+  });
+  if (res.status === 401) {
+    logout();
+    throw new Error('Sessão expirada. Faça login novamente.');
+  }
+  if (!res.ok) {
+    const errBody = await res.text();
+    throw new Error(`Erro na requisição (${res.status}): ${errBody}`);
+  }
+  return res;
+}
+
+/* ════════════════════════════════════════
+   CLIENTES / TRANSPORTADORAS — CRUD
+════════════════════════════════════════ */
+let cadastros = [];
+let tipoFormAtual = 'cliente';
+let editandoCadastroId = null;
+
+document.querySelectorAll('#tipoFormToggle .segmented-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#tipoFormToggle .segmented-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    tipoFormAtual = btn.dataset.tipo;
+  });
+});
+
+async function carregarCadastros() {
+  const list = document.getElementById('cadastroList');
+  list.innerHTML = '<div class="empty-msg"><i class="fa-solid fa-spinner fa-spin"></i> Carregando...</div>';
+  try {
+    const res = await sbAuthFetch('clientes?select=*&order=nome.asc');
+    cadastros = await res.json();
+    renderCadastros();
+  } catch (err) {
+    list.innerHTML = `<div class="empty-msg">Erro ao carregar: ${err.message}</div>`;
+  }
+}
+
+function renderCadastros() {
+  const list = document.getElementById('cadastroList');
+  document.getElementById('cadastroCount').textContent = `${cadastros.length} cadastro(s)`;
+  if (!cadastros.length) {
+    list.innerHTML = '<div class="empty-msg">Nenhum cadastro ainda.</div>';
+    return;
+  }
+  list.innerHTML = cadastros.map(c => `
+    <div class="list-item">
+      <div class="info">
+        <div class="nome">${c.nome}<span class="badge-tipo">${c.tipo === 'cliente' ? 'Cliente' : 'Transportadora'}</span></div>
+        <div class="detalhe"><i class="fa-solid fa-at" style="margin-right:4px;"></i>${c.destinatario}</div>
+        ${c.cc ? `<div class="detalhe"><i class="fa-solid fa-copy" style="margin-right:4px;"></i>${c.cc}</div>` : ''}
+      </div>
+      <div class="actions">
+        <button class="icon-btn edit" title="Editar" onclick="editarCadastro(${c.id})"><i class="fa-solid fa-pen"></i></button>
+        <button class="icon-btn del" title="Excluir" onclick="excluirCadastro(${c.id})"><i class="fa-solid fa-trash"></i></button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function limparFormCadastro() {
+  document.getElementById('cadastroId').value = '';
+  document.getElementById('cadastroNome').value = '';
+  document.getElementById('cadastroDestinatario').value = '';
+  document.getElementById('cadastroCc').value = '';
+  document.getElementById('formCadastroTitle').textContent = 'Novo Cadastro';
+  document.getElementById('btnCancelarCadastro').style.display = 'none';
+  editandoCadastroId = null;
+  tipoFormAtual = 'cliente';
+  document.querySelectorAll('#tipoFormToggle .segmented-btn').forEach((b, i) => b.classList.toggle('active', i === 0));
+}
+
+function editarCadastro(id) {
+  const c = cadastros.find(x => x.id === id);
+  if (!c) return;
+  editandoCadastroId = id;
+  document.getElementById('cadastroId').value = id;
+  document.getElementById('cadastroNome').value = c.nome;
+  document.getElementById('cadastroDestinatario').value = c.destinatario;
+  document.getElementById('cadastroCc').value = c.cc || '';
+  document.getElementById('formCadastroTitle').textContent = `Editando: ${c.nome}`;
+  document.getElementById('btnCancelarCadastro').style.display = 'flex';
+  tipoFormAtual = c.tipo;
+  document.querySelectorAll('#tipoFormToggle .segmented-btn').forEach(b => b.classList.toggle('active', b.dataset.tipo === c.tipo));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function excluirCadastro(id) {
+  const c = cadastros.find(x => x.id === id);
+  if (!c) return;
+  if (!confirm(`Excluir "${c.nome}"? Essa ação não pode ser desfeita.`)) return;
+  try {
+    await sbAuthFetch(`clientes?id=eq.${id}`, { method: 'DELETE' });
+    showToast('Cadastro excluído.');
+    if (editandoCadastroId === id) limparFormCadastro();
+    carregarCadastros();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+document.getElementById('btnCancelarCadastro').addEventListener('click', limparFormCadastro);
+
+document.getElementById('btnSalvarCadastro').addEventListener('click', async () => {
+  const nome = document.getElementById('cadastroNome').value.trim();
+  const destinatario = document.getElementById('cadastroDestinatario').value.trim();
+  const cc = document.getElementById('cadastroCc').value.trim();
+
+  if (!nome || !destinatario) {
+    showToast('Preencha nome e destinatário.', true);
+    return;
+  }
+
+  const payload = { nome, tipo: tipoFormAtual, destinatario, cc: cc || null, assunto: 'Documentos da Carga' };
+  const btn = document.getElementById('btnSalvarCadastro');
+  btn.disabled = true;
+
+  try {
+    if (editandoCadastroId) {
+      await sbAuthFetch(`clientes?id=eq.${editandoCadastroId}`, { method: 'PATCH', body: JSON.stringify(payload) });
+      showToast('Cadastro atualizado com sucesso!');
+    } else {
+      await sbAuthFetch('clientes', { method: 'POST', body: JSON.stringify(payload) });
+      showToast('Cadastro adicionado com sucesso!');
+    }
+    limparFormCadastro();
+    carregarCadastros();
+  } catch (err) {
+    showToast(err.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+/* ════════════════════════════════════════
+   FATURISTAS — CRUD
+════════════════════════════════════════ */
+let faturistas = [];
+let editandoFaturistaId = null;
+
+async function carregarFaturistas() {
+  const list = document.getElementById('faturistaList');
+  list.innerHTML = '<div class="empty-msg"><i class="fa-solid fa-spinner fa-spin"></i> Carregando...</div>';
+  try {
+    const res = await sbAuthFetch('faturistas?select=*&order=nome.asc');
+    faturistas = await res.json();
+    renderFaturistas();
+  } catch (err) {
+    list.innerHTML = `<div class="empty-msg">Erro ao carregar: ${err.message}</div>`;
+  }
+}
+
+function renderFaturistas() {
+  const list = document.getElementById('faturistaList');
+  document.getElementById('faturistaCount').textContent = `${faturistas.length} faturista(s)`;
+  if (!faturistas.length) {
+    list.innerHTML = '<div class="empty-msg">Nenhum faturista ainda.</div>';
+    return;
+  }
+  list.innerHTML = faturistas.map(f => `
+    <div class="list-item">
+      <div class="info"><div class="nome">${f.nome}</div></div>
+      <div class="actions">
+        <button class="icon-btn edit" title="Editar" onclick="editarFaturista(${f.id})"><i class="fa-solid fa-pen"></i></button>
+        <button class="icon-btn del" title="Excluir" onclick="excluirFaturista(${f.id})"><i class="fa-solid fa-trash"></i></button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function limparFormFaturista() {
+  document.getElementById('faturistaId').value = '';
+  document.getElementById('faturistaNome').value = '';
+  document.getElementById('formFaturistaTitle').textContent = 'Novo Faturista';
+  document.getElementById('btnCancelarFaturista').style.display = 'none';
+  editandoFaturistaId = null;
+}
+
+function editarFaturista(id) {
+  const f = faturistas.find(x => x.id === id);
+  if (!f) return;
+  editandoFaturistaId = id;
+  document.getElementById('faturistaId').value = id;
+  document.getElementById('faturistaNome').value = f.nome;
+  document.getElementById('formFaturistaTitle').textContent = `Editando: ${f.nome}`;
+  document.getElementById('btnCancelarFaturista').style.display = 'flex';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function excluirFaturista(id) {
+  const f = faturistas.find(x => x.id === id);
+  if (!f) return;
+  if (!confirm(`Excluir "${f.nome}"? Essa ação não pode ser desfeita.`)) return;
+  try {
+    await sbAuthFetch(`faturistas?id=eq.${id}`, { method: 'DELETE' });
+    showToast('Faturista excluído.');
+    if (editandoFaturistaId === id) limparFormFaturista();
+    carregarFaturistas();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+document.getElementById('btnCancelarFaturista').addEventListener('click', limparFormFaturista);
+
+document.getElementById('btnSalvarFaturista').addEventListener('click', async () => {
+  const nome = document.getElementById('faturistaNome').value.trim();
+  if (!nome) {
+    showToast('Informe o nome do faturista.', true);
+    return;
+  }
+
+  const btn = document.getElementById('btnSalvarFaturista');
+  btn.disabled = true;
+
+  try {
+    if (editandoFaturistaId) {
+      await sbAuthFetch(`faturistas?id=eq.${editandoFaturistaId}`, { method: 'PATCH', body: JSON.stringify({ nome }) });
+      showToast('Faturista atualizado com sucesso!');
+    } else {
+      await sbAuthFetch('faturistas', { method: 'POST', body: JSON.stringify({ nome }) });
+      showToast('Faturista adicionado com sucesso!');
+    }
+    limparFormFaturista();
+    carregarFaturistas();
+  } catch (err) {
+    showToast(err.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
