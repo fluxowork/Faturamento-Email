@@ -418,7 +418,7 @@
       width: 100%;
       border-collapse: collapse;
       font-size: .82rem;
-      min-width: 600px;
+      min-width: 820px;
     }
     thead { background: linear-gradient(135deg, var(--orange) 0%, var(--orange-d) 100%); }
     thead th {
@@ -527,6 +527,75 @@
       100% { box-shadow: 0 0 0 0 rgba(245,166,35,0); }
     }
     .pulse { animation: pulse-ring .6s; }
+
+    /* ── Segmented Toggle (Cliente / Transportadora) ── */
+    .segmented {
+      display: flex;
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 4px;
+      gap: 4px;
+    }
+    .segmented-btn {
+      flex: 1;
+      padding: 10px 12px;
+      border: none;
+      background: transparent;
+      border-radius: 6px;
+      font-family: 'Poppins', sans-serif;
+      font-size: .82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      transition: background .2s, color .2s;
+    }
+    .segmented-btn.active {
+      background: linear-gradient(135deg, var(--orange) 0%, var(--orange-d) 100%);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(226,148,18,.35);
+    }
+    .segmented-btn:hover:not(.active) { color: var(--text); }
+
+    /* ── Confirmation card ── */
+    #confirmCard { border-left: 4px solid var(--orange); }
+    .confirm-check {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-transform: none;
+      font-weight: 500;
+      font-size: .85rem;
+      color: var(--text);
+      cursor: pointer;
+      margin-bottom: 16px;
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      transition: border-color .2s;
+    }
+    .confirm-check:has(input:checked) { border-color: var(--orange); }
+    .confirm-check input[type="checkbox"] {
+      width: 19px; height: 19px;
+      accent-color: var(--orange);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .badge-tipo {
+      display: inline-block;
+      font-size: .68rem;
+      font-weight: 700;
+      padding: 2px 9px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      background: rgba(245,166,35,.15);
+      color: var(--orange-dk);
+      margin-left: 8px;
+      vertical-align: middle;
+    }
   </style>
 </head>
 <body>
@@ -572,6 +641,28 @@
       </div>
     </div>
 
+    <!-- Card 0: Faturista -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon"><i class="fa-solid fa-user-tie"></i></div>
+        <div>
+          <div class="card-title">Faturista</div>
+          <div class="card-subtitle">Quem está realizando o envio</div>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label for="faturistaSelect"><i class="fa-solid fa-user" style="margin-right:5px;"></i>Responsável*</label>
+        <div class="select-wrap">
+          <select id="faturistaSelect">
+            <option value="" disabled selected>— Selecione o faturista —</option>
+          </select>
+        </div>
+        <div id="faturistaError" style="color:#DC2626; font-size:.75rem; margin-top:5px; display:none;">
+          <i class="fa-solid fa-triangle-exclamation"></i> Selecione o faturista antes de continuar.
+        </div>
+      </div>
+    </div>
+
     <!-- Card 1: Cliente -->
     <div class="card">
       <div class="card-header">
@@ -583,7 +674,19 @@
       </div>
 
       <div class="field">
-        <label for="clientSelect"><i class="fa-solid fa-list" style="margin-right:5px;"></i>Cliente</label>
+        <label><i class="fa-solid fa-sliders" style="margin-right:5px;"></i>Tipo</label>
+        <div class="segmented" id="tipoToggle">
+          <button type="button" class="segmented-btn active" data-tipo="cliente">
+            <i class="fa-solid fa-store"></i> Cliente
+          </button>
+          <button type="button" class="segmented-btn" data-tipo="transportadora">
+            <i class="fa-solid fa-truck"></i> Transportadora
+          </button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="clientSelect"><i class="fa-solid fa-list" style="margin-right:5px;"></i><span id="selectLabel">Cliente</span></label>
         <div class="select-wrap">
           <select id="clientSelect">
             <option value="" disabled selected>— Selecione um cliente —</option>
@@ -672,7 +775,35 @@
     <button class="btn-primary" id="btnSend">
       <i class="fa-solid fa-envelope"></i> Enviar E-mail (Adicionar os Arquivos 📁)
     </button>
-   
+
+    <!-- Card 4: Confirmação de Envio -->
+    <div class="card" id="confirmCard" style="display:none;">
+      <div class="card-header">
+        <div class="card-icon"><i class="fa-solid fa-circle-check"></i></div>
+        <div>
+          <div class="card-title">Confirmar Envio</div>
+          <div class="card-subtitle">Volte aqui depois de enviar o e-mail no seu programa de e-mail</div>
+        </div>
+      </div>
+      <p style="font-size:.85rem; margin-bottom:14px; color:var(--text-muted); line-height:1.6;">
+        Depois de anexar os arquivos e clicar em enviar no seu programa de e-mail, marque a confirmação
+        abaixo para registrar o envio da carga <strong id="confirmCarga">—</strong> para
+        <strong id="confirmCliente">—</strong> no relatório.
+      </p>
+      <label class="confirm-check">
+        <input type="checkbox" id="confirmCheck"/>
+        Confirmo que o e-mail foi enviado com os arquivos anexados.
+      </label>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn-primary" id="btnConfirmSend" disabled style="flex:1; min-width:180px;">
+          <i class="fa-solid fa-check-double"></i> Registrar Envio no Relatório
+        </button>
+        <button class="btn-secondary" id="btnCancelConfirm">
+          <i class="fa-solid fa-xmark"></i> Cancelar
+        </button>
+      </div>
+    </div>
+
   </div><!-- /panel-envio -->
 
   <!-- ─── TAB: RELATÓRIO ─── -->
@@ -727,14 +858,16 @@
             <tr>
               <th>Ordem</th>
               <th>Data / Hora</th>
+              <th>Faturista</th>
               <th>Cliente</th>
+              <th>Tipo</th>
               <th>Nº Carga</th>
               <th>Destinatário</th>
               <th>Status</th>
             </tr>
           </thead>
           <tbody id="reportBody">
-            <tr><td colspan="6" class="td-empty">Nenhum envio registrado ainda.</td></tr>
+            <tr><td colspan="8" class="td-empty">Nenhum envio registrado ainda.</td></tr>
           </tbody>
         </table>
       </div>
@@ -764,88 +897,118 @@
 const CLIENTES = [
   {
     nome: "Expresso Descalvado Transportes",
+    tipo: "transportadora",
     destinatario: "descalvado.cte@adimax.com.br",
     cc: "faturamento.salto@adimax.com.br",
     assunto: "Documentos da Carga"
   },
   {
     nome: "Cobasi",
+    tipo: "cliente",
     destinatario: "camila.galastri@adimax.com.br; veronica.correa@adimax.com.br; paola.antunes@adimax.com.br",
     cc: "faturamento.salto@adimax.com.br",
     assunto: "Documentos da Carga"
   },
   {
     nome: "Mello Transportes",
+    tipo: "transportadora",
     destinatario: "faturamento@mellotransportes.com.br; kauanpinheiro@mellotransportes.com.br; luishenrique@mellotransportes.com.br; tiago.oliveira@mellotransportes.com.br",
     cc: "faturamento.salto@adimax.com.br",
     assunto: "Documentos da Carga"
   },
   {
     nome: "Fernanda Ferraz Transportes",
+    tipo: "transportadora",
     destinatario: "ferraztransporte@outlook.com; leonardo@ferrazlog.com.br; miriele@ferrazlog.com.br; raphael@ferrazlog.com.br; financeiro@ferrazlog.com.br; fernanda@ferrazlog.com.br; monitoramento@ferrazlog.com.br",
     cc: "faturamento.salto@adimax.com.br; transporte.slt@adimax.com.br",
     assunto: "Documentos da Carga"
   },
   {
     nome: "Scapol Distribuidora",
+    tipo: "cliente",
     destinatario: "leonardo.soares@scapol.com.br; comercial@scapol.com.br; dlogistica@scapol.com.br",
     cc: "faturamento.salto@adimax.com.br",
     assunto: "Documentos da Carga"
   },
   {
     nome: "Pet Center Comércio",
+    tipo: "cliente",
     destinatario: "camila.galastri@adimax.com.br; customerservice.slt@adimax.com.br; paola.antunes@adimax.com.br; gabriella.iglesias@adimax.com.br",
     cc: "faturamento.salto@adimax.com.br",
     assunto: "Documentos da Carga"
   },
   {
     nome: "Pet Camp Comércio",
+    tipo: "cliente",
     destinatario: "camila.galastri@adimax.com.br; customerservice.slt@adimax.com.br; gabriella.iglesias@adimax.com.br; paola.antunes@adimax.com.br",
     cc: "faturamento.salto@adimax.com.br",
     assunto: "Documentos da Carga"
   },
   {
     nome: "Xavier Logistica",
+    tipo: "transportadora",
     destinatario: "comercial@xavierlog.com.br; financeiro@xavierlog.com.br; faturamento@xavierlog.com.br",
     cc: "faturamento.salto@adimax.com.br",
     assunto: "Documentos da Carga"
   },
   {
     nome: "Sol da Terra Transportes",
+    tipo: "transportadora",
     destinatario: "daniel.romao@soldaterratransportes.com.br",
     cc: "faturamento.salto@adimax.com.br",
     assunto: "Documentos da Carga"
   },
   {
     nome: "Teixeira Varajão Transportes",
+    tipo: "transportadora",
     destinatario: "nfe@teixeiravarajao.com.br; xml@ssw.inf.br ",
     cc: "faturamento.salto@adimax.com.br",
     assunto: "Documentos da Carga"
   },
   {
     nome: "INOVA Rota Transportes",
+    tipo: "transportadora",
     destinatario: "leticia@exde.com.br; logistica@exde.com.br; paloma@exde.com.br; richard@exde.com.br;tofoli@exde.com.br",
     cc: "faturamento.salto@adimax.com.br",
     assunto: "Documentos da Carga"
   },
   {
     nome: "Tudo de Bicho Comércio",
+    tipo: "cliente",
     destinatario: "camila.galastri@adimax.com.br; customerservice.slt@adimax.com.br; gabriella.iglesias@adimax.com.br; paola.antunes@adimax.com.br",
     cc: "faturamento.salto@adimax.com.br",
     assunto: "Documentos da Carga"
   },
   {
     nome: "JM Transportes",
+    tipo: "transportadora",
     destinatario: "valter.regal@jmdistribuicao.com.br; emissoes@jmdistribuicao.com.br; Henrique.ferreira@jmdistribuicao.com.br; gabriela.oliveira@jmdistribuicao.com.br",
     cc: "ana.goncalves@adimax.com.br; jonathan.rodrigues@adimax.com.br; faturamento.salto@adimax.com.br",
     assunto: "Documentos da Carga"
   },
   {
     nome: "VR Nogueira Transportes",
+    tipo: "transportadora",
     destinatario: "xmladmlosangelo.porto@gmail.com; waleska.ascurra@adimax.com.br; customerservice.slt@adimax.com.br; transporte.slt@adimax.com.br",
     cc: "admlosangelo.porto@gmail.com; faturamento.salto@adimax.com.br",
     assunto: "Documentos da Carga"
   }
+];
+
+/* ════════════════════════════════════════
+   FATURISTAS — em ordem alfabética
+════════════════════════════════════════ */
+const FATURISTAS = [
+  "Aline Oliveira",
+  "Camila Siqueira",
+  "Denise Rodrigues",
+  "Gisele Nogueira",
+  "João Victor",
+  "Michel Nascimento",
+  "Nayane Furquim",
+  "Nycollas Nascimento",
+  "Rodrigo Silva",
+  "Vitória Santos"
 ];
 
 /* ════════════════════════════════════════
@@ -859,7 +1022,7 @@ const SUPABASE_URL = 'https://steshsjylmoiqwdcpytu.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0ZXNoc2p5bG1vaXF3ZGNweXR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNTA3MzEsImV4cCI6MjA5NzgyNjczMX0.7vPoFH69O_P66P2ZxIk3igppQl75mNb9GB9AURaTyd8';
 
 async function sbInsert(r) {
-  await fetch(`${SUPABASE_URL}/rest/v1/envios`, {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/envios`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -869,6 +1032,7 @@ async function sbInsert(r) {
     },
     body: JSON.stringify(r)
   });
+  if (!res.ok) throw new Error(`Supabase insert falhou: ${res.status}`);
 }
 
 async function sbSelect(filtros = {}) {
@@ -910,18 +1074,66 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 });
 
 /* ════════════════════════════════════════
-   SELECT DE CLIENTE
+   SELECT DE FATURISTA
+════════════════════════════════════════ */
+const faturistaSelect = document.getElementById('faturistaSelect');
+
+FATURISTAS.forEach(nome => {
+  const opt = document.createElement('option');
+  opt.value = nome;
+  opt.textContent = nome;
+  faturistaSelect.appendChild(opt);
+});
+
+faturistaSelect.addEventListener('change', () => {
+  if (faturistaSelect.value) {
+    document.getElementById('faturistaError').style.display = 'none';
+  }
+});
+
+/* ════════════════════════════════════════
+   TOGGLE CLIENTE / TRANSPORTADORA
 ════════════════════════════════════════ */
 const clientSelect = document.getElementById('clientSelect');
 const clientInfo   = document.getElementById('clientInfo');
+const selectLabel  = document.getElementById('selectLabel');
+let tipoAtual = 'cliente';
 
-// Popular o <select> com os clientes
-CLIENTES.forEach((c, i) => {
-  const opt = document.createElement('option');
-  opt.value = i;
-  opt.textContent = c.nome;
-  clientSelect.appendChild(opt);
+function popularSelect(tipo) {
+  clientSelect.innerHTML = '';
+  const optDefault = document.createElement('option');
+  optDefault.value = '';
+  optDefault.disabled = true;
+  optDefault.selected = true;
+  optDefault.textContent = tipo === 'cliente' ? '— Selecione um cliente —' : '— Selecione uma transportadora —';
+  clientSelect.appendChild(optDefault);
+
+  CLIENTES.forEach((c, i) => {
+    if (c.tipo !== tipo) return;
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = c.nome;
+    clientSelect.appendChild(opt);
+  });
+}
+
+document.querySelectorAll('.segmented-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.classList.contains('active')) return;
+    document.querySelectorAll('.segmented-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    tipoAtual = btn.dataset.tipo;
+    selectLabel.textContent = tipoAtual === 'cliente' ? 'Cliente' : 'Transportadora';
+
+    // Reset seleção ao trocar de tipo
+    selectedClient = null;
+    clientInfo.style.display = 'none';
+    popularSelect(tipoAtual);
+    updatePreview();
+  });
 });
+
+popularSelect(tipoAtual);
 
 clientSelect.addEventListener('change', () => {
   const idx = parseInt(clientSelect.value);
@@ -985,10 +1197,26 @@ document.getElementById('btnCopy').addEventListener('click', () => {
 /* ════════════════════════════════════════
    BOTÃO ENVIAR / MAILTO
 ════════════════════════════════════════ */
-document.getElementById('btnSend').addEventListener('click', () => {
+let pendingRegistro = null;
+
+const btnSend        = document.getElementById('btnSend');
+const confirmCard     = document.getElementById('confirmCard');
+const confirmCheck    = document.getElementById('confirmCheck');
+const btnConfirmSend  = document.getElementById('btnConfirmSend');
+const btnCancelConfirm = document.getElementById('btnCancelConfirm');
+
+btnSend.addEventListener('click', () => {
   const num = cargaNum.value.trim();
+  const faturista = faturistaSelect.value;
 
   // Validação
+  if (!faturista) {
+    document.getElementById('faturistaError').style.display = 'block';
+    faturistaSelect.focus();
+    return;
+  }
+  document.getElementById('faturistaError').style.display = 'none';
+
   if (!num) {
     document.getElementById('cargaError').style.display = 'block';
     cargaNum.focus();
@@ -997,7 +1225,7 @@ document.getElementById('btnSend').addEventListener('click', () => {
   document.getElementById('cargaError').style.display = 'none';
 
   if (!selectedClient) {
-    showToast('Selecione um cliente antes de continuar.', 'warning');
+    showToast('Selecione um cliente ou transportadora antes de continuar.', 'warning');
     return;
   }
 
@@ -1009,28 +1237,78 @@ document.getElementById('btnSend').addEventListener('click', () => {
   const mailto = `mailto:${to}?${cc ? 'cc=' + cc + '&' : ''}subject=${subject}&body=${body}`;
   window.location.href = mailto;
 
-  // Registrar envio
+  // Contador de sessão (e-mails gerados, independente de já terem sido registrados)
   sessionCount++;
   document.getElementById('sessionCount').textContent = sessionCount;
 
+  // Monta o registro pendente — só vai para o relatório após confirmação
   const now = new Date();
-  const registro = {
+  pendingRegistro = {
     data: now.toLocaleDateString('pt-BR'),
     hora: now.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}),
+    faturista: faturista,
     cliente: selectedClient.nome,
+    tipo: selectedClient.tipo,
     carga: num,
     destinatario: to,
     cc: selectedClient.cc || '',
     status: 'Enviado'
   };
-  sbInsert(registro).then(() => envios.unshift(registro));
+
+  // Exibe o card de confirmação
+  document.getElementById('confirmCarga').textContent   = num;
+  document.getElementById('confirmCliente').textContent = selectedClient.nome;
+  confirmCheck.checked = false;
+  btnConfirmSend.disabled = true;
+  confirmCard.style.display = 'block';
+  btnSend.disabled = true;
+  confirmCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  showToast('Cliente de e-mail aberto! Volte aqui para confirmar o envio.');
+});
+
+confirmCheck.addEventListener('change', () => {
+  btnConfirmSend.disabled = !confirmCheck.checked;
+});
+
+btnConfirmSend.addEventListener('click', async () => {
+  if (!pendingRegistro) return;
+  btnConfirmSend.disabled = true;
+  btnConfirmSend.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Registrando...';
+
+  try {
+    await sbInsert(pendingRegistro);
+    envios.unshift(pendingRegistro);
+    showToast('Envio registrado no relatório com sucesso!');
+  } catch (err) {
+    showToast('Erro ao registrar. Tente novamente.', 'warning');
+    btnConfirmSend.disabled = false;
+    btnConfirmSend.innerHTML = '<i class="fa-solid fa-check-double"></i> Registrar Envio no Relatório';
+    return;
+  }
+
+  // Reseta o formulário para o próximo envio
+  pendingRegistro = null;
+  confirmCard.style.display = 'none';
+  btnConfirmSend.innerHTML = '<i class="fa-solid fa-check-double"></i> Registrar Envio no Relatório';
+  btnSend.disabled = false;
+
+  cargaNum.value = '';
+  selectedClient = null;
+  clientInfo.style.display = 'none';
+  clientSelect.value = '';
+  updatePreview();
 
   // Pulse animation
-  const btn = document.getElementById('btnSend');
-  btn.classList.add('pulse');
-  setTimeout(() => btn.classList.remove('pulse'), 700);
+  btnSend.classList.add('pulse');
+  setTimeout(() => btnSend.classList.remove('pulse'), 700);
+});
 
-  showToast('Cliente de e-mail aberto com sucesso!');
+btnCancelConfirm.addEventListener('click', () => {
+  pendingRegistro = null;
+  confirmCard.style.display = 'none';
+  btnSend.disabled = false;
+  showToast('Registro cancelado. O e-mail já enviado não foi contabilizado no relatório.');
 });
 
 /* ════════════════════════════════════════
@@ -1038,7 +1316,7 @@ document.getElementById('btnSend').addEventListener('click', () => {
 ════════════════════════════════════════ */
 async function renderReport(filterText = '', filterDate = '') {
   const body = document.getElementById('reportBody');
-  body.innerHTML = `<tr><td colspan="6" class="td-empty"><i class="fa-solid fa-spinner fa-spin" style="margin-right:6px;"></i>Carregando...</td></tr>`;
+  body.innerHTML = `<tr><td colspan="8" class="td-empty"><i class="fa-solid fa-spinner fa-spin" style="margin-right:6px;"></i>Carregando...</td></tr>`;
 
   let dataFiltro = '';
   if (filterDate) {
@@ -1055,7 +1333,7 @@ async function renderReport(filterText = '', filterDate = '') {
   document.getElementById('statClientes').textContent = [...new Set(todos.map(e => e.cliente))].length;
 
   if (!data.length) {
-    body.innerHTML = `<tr><td colspan="6" class="td-empty"><i class="fa-solid fa-inbox" style="margin-right:6px;"></i>Nenhum registro encontrado.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="8" class="td-empty"><i class="fa-solid fa-inbox" style="margin-right:6px;"></i>Nenhum registro encontrado.</td></tr>`;
     return;
   }
 
@@ -1063,7 +1341,9 @@ async function renderReport(filterText = '', filterDate = '') {
     <tr>
       <td style="color:var(--text-muted); font-size:.75rem;">${data.length - i}</td>
       <td style="white-space:nowrap;">${e.data} <span style="color:var(--text-muted);">${e.hora}</span></td>
+      <td style="font-size:.78rem;">${e.faturista || '—'}</td>
       <td><strong>${e.cliente}</strong></td>
+      <td>${e.tipo ? `<span class="badge-tipo">${e.tipo === 'cliente' ? 'Cliente' : 'Transportadora'}</span>` : '—'}</td>
       <td class="td-num">${e.carga}</td>
       <td style="font-size:.78rem;">${e.destinatario}</td>
       <td><span class="badge badge-sent"><i class="fa-solid fa-check" style="margin-right:3px;"></i>${e.status}</span></td>
@@ -1091,9 +1371,9 @@ document.getElementById('btnClearFilter').addEventListener('click', () => {
 document.getElementById('btnExport').addEventListener('click', async () => {
   const todos = await sbSelect();
   if (!todos.length) { showToast('Nenhum dado para exportar.', 'warning'); return; }
-  const header = 'N°,Data,Hora,Cliente,Carga,Destinatário,CC,Status\n';
+  const header = 'N°,Data,Hora,Faturista,Cliente,Tipo,Carga,Destinatário,CC,Status\n';
   const rows = todos.map((e, i) =>
-    `${i+1},"${e.data}","${e.hora}","${e.cliente}","${e.carga}","${e.destinatario}","${e.cc||''}","${e.status}"`
+    `${i+1},"${e.data}","${e.hora}","${e.faturista||''}","${e.cliente}","${e.tipo||''}","${e.carga}","${e.destinatario}","${e.cc||''}","${e.status}"`
   ).join('\n');
   const blob = new Blob(['\uFEFF' + header + rows], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
