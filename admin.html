@@ -192,7 +192,7 @@
   <div class="login-card">
     <i class="fa-solid fa-lock"></i>
     <h2>Acesso Restrito</h2>
-    <p>Entre com seu login para gerenciar clientes, transportadoras e faturistas.</p>
+    <p>Entre com seu login para gerenciar clientes, transportadoras e usuários..</p>
     <div class="field">
       <label for="loginEmail">E-mail</label>
       <input type="email" id="loginEmail" placeholder="seu.email@adimax.com.br" autocomplete="username"/>
@@ -213,7 +213,6 @@
   <main>
     <nav class="tab-nav">
       <button class="tab-btn active" data-tab="cadastro"><i class="fa-solid fa-building-user"></i> Clientes / Transportadoras</button>
-      <button class="tab-btn" data-tab="faturistas"><i class="fa-solid fa-user-tie"></i> Faturistas</button>
       <button class="tab-btn" data-tab="usuarios"><i class="fa-solid fa-key"></i> Usuários</button>
     </nav>
 
@@ -254,33 +253,6 @@
         <div class="card-title">Cadastrados</div>
         <div class="card-subtitle" id="cadastroCount">Carregando...</div>
         <div id="cadastroList"></div>
-      </div>
-    </div>
-
-    <!-- ─── TAB: FATURISTAS ─── -->
-    <div class="tab-panel" id="panel-faturistas">
-
-      <div class="card">
-        <div class="card-title" id="formFaturistaTitle">Novo Faturista</div>
-        <div class="card-subtitle">Adicione o nome do responsável pelo envio</div>
-
-        <input type="hidden" id="faturistaId"/>
-
-        <div class="field">
-          <label for="faturistaNome">Nome*</label>
-          <input type="text" id="faturistaNome" placeholder="Ex.: João Victor"/>
-        </div>
-
-        <div class="form-actions">
-          <button class="btn-primary" id="btnSalvarFaturista"><i class="fa-solid fa-floppy-disk"></i> Salvar</button>
-          <button class="btn-secondary" id="btnCancelarFaturista" style="display:none;"><i class="fa-solid fa-xmark"></i> Cancelar edição</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Cadastrados</div>
-        <div class="card-subtitle" id="faturistaCount">Carregando...</div>
-        <div id="faturistaList"></div>
       </div>
     </div>
 
@@ -396,7 +368,6 @@ function showApp(loggedIn) {
   btnLogout.style.display   = loggedIn ? 'flex' : 'none';
   if (loggedIn) {
     carregarCadastros();
-    carregarFaturistas();
     carregarUsuarios();
   }
 }
@@ -589,104 +560,6 @@ document.getElementById('btnSalvarCadastro').addEventListener('click', async () 
     }
     limparFormCadastro();
     carregarCadastros();
-  } catch (err) {
-    showToast(err.message, true);
-  } finally {
-    btn.disabled = false;
-  }
-});
-
-/* ════════════════════════════════════════
-   FATURISTAS — CRUD
-════════════════════════════════════════ */
-let faturistas = [];
-let editandoFaturistaId = null;
-
-async function carregarFaturistas() {
-  const list = document.getElementById('faturistaList');
-  list.innerHTML = '<div class="empty-msg"><i class="fa-solid fa-spinner fa-spin"></i> Carregando...</div>';
-  try {
-    const res = await sbAuthFetch('faturistas?select=*&order=nome.asc');
-    faturistas = await res.json();
-    renderFaturistas();
-  } catch (err) {
-    list.innerHTML = `<div class="empty-msg">Erro ao carregar: ${err.message}</div>`;
-  }
-}
-
-function renderFaturistas() {
-  const list = document.getElementById('faturistaList');
-  document.getElementById('faturistaCount').textContent = `${faturistas.length} faturista(s)`;
-  if (!faturistas.length) {
-    list.innerHTML = '<div class="empty-msg">Nenhum faturista ainda.</div>';
-    return;
-  }
-  list.innerHTML = faturistas.map(f => `
-    <div class="list-item">
-      <div class="info"><div class="nome">${f.nome}</div></div>
-      <div class="actions">
-        <button class="icon-btn edit" title="Editar" onclick="editarFaturista(${f.id})"><i class="fa-solid fa-pen"></i></button>
-        <button class="icon-btn del" title="Excluir" onclick="excluirFaturista(${f.id})"><i class="fa-solid fa-trash"></i></button>
-      </div>
-    </div>
-  `).join('');
-}
-
-function limparFormFaturista() {
-  document.getElementById('faturistaId').value = '';
-  document.getElementById('faturistaNome').value = '';
-  document.getElementById('formFaturistaTitle').textContent = 'Novo Faturista';
-  document.getElementById('btnCancelarFaturista').style.display = 'none';
-  editandoFaturistaId = null;
-}
-
-function editarFaturista(id) {
-  const f = faturistas.find(x => x.id === id);
-  if (!f) return;
-  editandoFaturistaId = id;
-  document.getElementById('faturistaId').value = id;
-  document.getElementById('faturistaNome').value = f.nome;
-  document.getElementById('formFaturistaTitle').textContent = `Editando: ${f.nome}`;
-  document.getElementById('btnCancelarFaturista').style.display = 'flex';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-async function excluirFaturista(id) {
-  const f = faturistas.find(x => x.id === id);
-  if (!f) return;
-  if (!confirm(`Excluir "${f.nome}"? Essa ação não pode ser desfeita.`)) return;
-  try {
-    await sbAuthFetch(`faturistas?id=eq.${id}`, { method: 'DELETE' });
-    showToast('Faturista excluído.');
-    if (editandoFaturistaId === id) limparFormFaturista();
-    carregarFaturistas();
-  } catch (err) {
-    showToast(err.message, true);
-  }
-}
-
-document.getElementById('btnCancelarFaturista').addEventListener('click', limparFormFaturista);
-
-document.getElementById('btnSalvarFaturista').addEventListener('click', async () => {
-  const nome = document.getElementById('faturistaNome').value.trim();
-  if (!nome) {
-    showToast('Informe o nome do faturista.', true);
-    return;
-  }
-
-  const btn = document.getElementById('btnSalvarFaturista');
-  btn.disabled = true;
-
-  try {
-    if (editandoFaturistaId) {
-      await sbAuthFetch(`faturistas?id=eq.${editandoFaturistaId}`, { method: 'PATCH', body: JSON.stringify({ nome }) });
-      showToast('Faturista atualizado com sucesso!');
-    } else {
-      await sbAuthFetch('faturistas', { method: 'POST', body: JSON.stringify({ nome }) });
-      showToast('Faturista adicionado com sucesso!');
-    }
-    limparFormFaturista();
-    carregarFaturistas();
   } catch (err) {
     showToast(err.message, true);
   } finally {
