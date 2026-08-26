@@ -26,14 +26,6 @@
       --radius:    14px;
       --radius-sm: 8px;
     }
-    body.dark {
-      --bg:     #111827;
-      --card:   #1F2937;
-      --text:   #F9FAFB;
-      --text-muted: #9CA3AF;
-      --border: #374151;
-      --shadow: 0 2px 12px rgba(0,0,0,.4);
-    }
     body {
       font-family: 'Poppins', sans-serif;
       background: var(--bg);
@@ -191,7 +183,6 @@
 <header>
   <h1><i class="fa-solid fa-gear"></i> Administração - Cadastros</h1>
   <div style="display:flex; gap:8px;">
-    <button class="btn-icon" id="darkToggle" title="Modo escuro"><i class="fa-solid fa-moon" id="darkIcon"></i></button>
     <button class="btn-icon" id="btnLogout" title="Sair" style="display:none;"><i class="fa-solid fa-right-from-bracket"></i></button>
   </div>
 </header>
@@ -223,6 +214,7 @@
     <nav class="tab-nav">
       <button class="tab-btn active" data-tab="cadastro"><i class="fa-solid fa-building-user"></i> Clientes / Transportadoras</button>
       <button class="tab-btn" data-tab="faturistas"><i class="fa-solid fa-user-tie"></i> Faturistas</button>
+      <button class="tab-btn" data-tab="usuarios"><i class="fa-solid fa-key"></i> Usuários</button>
     </nav>
 
     <!-- ─── TAB: CLIENTES/TRANSPORTADORAS ─── -->
@@ -292,6 +284,44 @@
       </div>
     </div>
 
+    <!-- ─── TAB: USUÁRIOS ─── -->
+    <div class="tab-panel" id="panel-usuarios">
+
+      <div class="card">
+        <div class="card-title">Novo Usuário de Acesso</div>
+        <div class="card-subtitle">Cria um login para esta tela de administração e para o site de envio (campo Faturista)</div>
+
+        <div class="field">
+          <label for="novoUserNome">Nome</label>
+          <input type="text" id="novoUserNome" placeholder="Ex.: João Victor" autocomplete="off"/>
+        </div>
+        <div class="field">
+          <label for="novoUserEmail">E-mail</label>
+          <input type="email" id="novoUserEmail" placeholder="pessoa@adimax.com.br" autocomplete="off"/>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="novoUserSenha">Senha</label>
+            <input type="password" id="novoUserSenha" placeholder="Mínimo 6 caracteres" autocomplete="new-password"/>
+          </div>
+          <div class="field">
+            <label for="novoUserSenha2">Confirmar senha</label>
+            <input type="password" id="novoUserSenha2" placeholder="Repita a senha" autocomplete="new-password"/>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn-primary" id="btnSalvarUsuario"><i class="fa-solid fa-user-plus"></i> Criar Usuário</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Usuários com Acesso</div>
+        <div class="card-subtitle" id="usuarioCount">Carregando...</div>
+        <div id="usuarioList"></div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -305,19 +335,6 @@ const SUPABASE_URL = 'https://steshsjylmoiqwdcpytu.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0ZXNoc2p5bG1vaXF3ZGNweXR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNTA3MzEsImV4cCI6MjA5NzgyNjczMX0.7vPoFH69O_P66P2ZxIk3igppQl75mNb9GB9AURaTyd8';
 
 let accessToken = sessionStorage.getItem('adimax_admin_token') || null;
-
-/* ════════════════════════════════════════
-   DARK MODE
-════════════════════════════════════════ */
-const darkToggle = document.getElementById('darkToggle');
-const darkIcon   = document.getElementById('darkIcon');
-function applyDark(on) {
-  document.body.classList.toggle('dark', on);
-  darkIcon.className = on ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
-  localStorage.setItem('adimax_dark', on ? '1' : '');
-}
-applyDark(!!localStorage.getItem('adimax_dark'));
-darkToggle.addEventListener('click', () => applyDark(!document.body.classList.contains('dark')));
 
 /* ════════════════════════════════════════
    TOAST
@@ -380,6 +397,7 @@ function showApp(loggedIn) {
   if (loggedIn) {
     carregarCadastros();
     carregarFaturistas();
+    carregarUsuarios();
   }
 }
 
@@ -673,6 +691,113 @@ document.getElementById('btnSalvarFaturista').addEventListener('click', async ()
     showToast(err.message, true);
   } finally {
     btn.disabled = false;
+  }
+});
+
+/* ════════════════════════════════════════
+   USUÁRIOS DE ACESSO — via Edge Function
+   (precisa da service_role key, por isso passa
+   sempre pela função manage-users, nunca direto)
+════════════════════════════════════════ */
+async function chamarManageUsers(payload) {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/manage-users`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${accessToken}`
+    },
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Erro na operação.');
+  return data;
+}
+
+async function carregarUsuarios() {
+  const list = document.getElementById('usuarioList');
+  list.innerHTML = '<div class="empty-msg"><i class="fa-solid fa-spinner fa-spin"></i> Carregando...</div>';
+  try {
+    const { users } = await chamarManageUsers({ action: 'list' });
+    renderUsuarios(users);
+  } catch (err) {
+    list.innerHTML = `<div class="empty-msg">Erro ao carregar: ${err.message}</div>`;
+  }
+}
+
+function renderUsuarios(users) {
+  const list = document.getElementById('usuarioList');
+  document.getElementById('usuarioCount').textContent = `${users.length} usuário(s) com acesso`;
+  if (!users.length) {
+    list.innerHTML = '<div class="empty-msg">Nenhum usuário encontrado.</div>';
+    return;
+  }
+  list.innerHTML = users.map(u => `
+    <div class="list-item">
+      <div class="info">
+        <div class="nome">${u.nome || u.email}${u.souEu ? '<span class="badge-tipo">Você</span>' : ''}</div>
+        <div class="detalhe">
+          <i class="fa-solid fa-at" style="margin-right:4px;"></i>${u.email}
+        </div>
+        <div class="detalhe">
+          <i class="fa-solid fa-calendar" style="margin-right:4px;"></i>${new Date(u.created_at).toLocaleDateString('pt-BR')}
+          ${u.confirmed ? '' : ' · <span style="color:#DC2626;">e-mail não confirmado</span>'}
+        </div>
+      </div>
+      <div class="actions">
+        ${u.souEu ? '' : `<button class="icon-btn del" title="Excluir acesso" onclick="excluirUsuario('${u.id}','${u.email.replace(/'/g, "\\'")}')"><i class="fa-solid fa-trash"></i></button>`}
+      </div>
+    </div>
+  `).join('');
+}
+
+async function excluirUsuario(id, email) {
+  if (!confirm(`Remover o acesso de "${email}"? Essa pessoa não vai mais conseguir entrar na administração.`)) return;
+  try {
+    await chamarManageUsers({ action: 'delete', id });
+    showToast('Usuário removido.');
+    carregarUsuarios();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+document.getElementById('btnSalvarUsuario').addEventListener('click', async () => {
+  const nome = document.getElementById('novoUserNome').value.trim();
+  const email = document.getElementById('novoUserEmail').value.trim();
+  const senha = document.getElementById('novoUserSenha').value;
+  const senha2 = document.getElementById('novoUserSenha2').value;
+
+  if (!nome || !email || !senha) {
+    showToast('Preencha nome, e-mail e senha.', true);
+    return;
+  }
+  if (senha.length < 6) {
+    showToast('A senha precisa ter pelo menos 6 caracteres.', true);
+    return;
+  }
+  if (senha !== senha2) {
+    showToast('As senhas não coincidem.', true);
+    return;
+  }
+
+  const btn = document.getElementById('btnSalvarUsuario');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Criando...';
+
+  try {
+    await chamarManageUsers({ action: 'create', nome, email, password: senha });
+    showToast(`Usuário ${nome} criado com sucesso!`);
+    document.getElementById('novoUserNome').value = '';
+    document.getElementById('novoUserEmail').value = '';
+    document.getElementById('novoUserSenha').value = '';
+    document.getElementById('novoUserSenha2').value = '';
+    carregarUsuarios();
+  } catch (err) {
+    showToast(err.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Criar Usuário';
   }
 });
 </script>
