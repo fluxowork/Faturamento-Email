@@ -71,6 +71,16 @@
 
     label { display: block; font-size: .78rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; text-align: left; text-transform: uppercase; letter-spacing: .4px; }
     .field { margin-bottom: 16px; }
+
+    .pw-wrap { position: relative; }
+    .pw-wrap input { padding-right: 40px; }
+    .pw-toggle {
+      position: absolute;
+      right: 10px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer;
+      color: var(--text-muted); font-size: .9rem; padding: 4px;
+    }
+    .pw-toggle:hover { color: var(--orange-dk); }
     input[type="text"], input[type="email"], input[type="password"], select, textarea {
       width: 100%; padding: 11px 13px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
       font-family: 'Poppins', sans-serif; font-size: .9rem; background: var(--bg); color: var(--text);
@@ -205,11 +215,9 @@
       <i class="fa-solid fa-right-to-bracket"></i> Entrar
     </button>
     <div class="error-msg" id="loginError"></div>
-
-<div class="error-msg" id="loginError"></div>
-<a href="index.html" class="btn-secondary" style="width:100%; justify-content:center; margin-top:12px; text-decoration:none;">
-  <i class="fa-solid fa-house"></i> Voltar para o site
-</a>
+    <a href="index.html" class="btn-secondary" style="width:100%; justify-content:center; margin-top:12px; text-decoration:none;">
+      <i class="fa-solid fa-house"></i> Voltar para o site
+    </a>
   </div>
 </div>
 
@@ -273,7 +281,7 @@
 
         <div class="field">
           <label for="faturistaNome">Nome*</label>
-          <input type="text" id="faturistaNome" placeholder="Ex.: Nome e Sobrenome"/>
+          <input type="text" id="faturistaNome" placeholder="Ex.: João Victor"/>
         </div>
 
         <div class="form-actions">
@@ -307,11 +315,17 @@
         <div class="row">
           <div class="field">
             <label for="novoUserSenha">Senha</label>
-            <input type="password" id="novoUserSenha" placeholder="Mínimo 6 caracteres" autocomplete="new-password"/>
+            <div class="pw-wrap">
+              <input type="password" id="novoUserSenha" placeholder="Mínimo 6 caracteres" autocomplete="new-password"/>
+              <button type="button" class="pw-toggle" data-target="novoUserSenha"><i class="fa-solid fa-eye"></i></button>
+            </div>
           </div>
           <div class="field">
             <label for="novoUserSenha2">Confirmar senha</label>
-            <input type="password" id="novoUserSenha2" placeholder="Repita a senha" autocomplete="new-password"/>
+            <div class="pw-wrap">
+              <input type="password" id="novoUserSenha2" placeholder="Repita a senha" autocomplete="new-password"/>
+              <button type="button" class="pw-toggle" data-target="novoUserSenha2"><i class="fa-solid fa-eye"></i></button>
+            </div>
           </div>
         </div>
 
@@ -700,6 +714,19 @@ document.getElementById('btnSalvarFaturista').addEventListener('click', async ()
 });
 
 /* ════════════════════════════════════════
+   MOSTRAR/OCULTAR SENHA
+════════════════════════════════════════ */
+document.querySelectorAll('.pw-toggle').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const input = document.getElementById(btn.dataset.target);
+    const icon = btn.querySelector('i');
+    const mostrando = input.type === 'text';
+    input.type = mostrando ? 'password' : 'text';
+    icon.className = mostrando ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
+  });
+});
+
+/* ════════════════════════════════════════
    USUÁRIOS DE ACESSO — via Edge Function
    (precisa da service_role key, por isso passa
    sempre pela função manage-users, nunca direto)
@@ -770,8 +797,8 @@ async function excluirUsuario(id, email) {
 document.getElementById('btnSalvarUsuario').addEventListener('click', async () => {
   const nome = document.getElementById('novoUserNome').value.trim();
   const email = document.getElementById('novoUserEmail').value.trim();
-  const senha = document.getElementById('novoUserSenha').value;
-  const senha2 = document.getElementById('novoUserSenha2').value;
+  const senha = document.getElementById('novoUserSenha').value.trim();
+  const senha2 = document.getElementById('novoUserSenha2').value.trim();
 
   if (!nome || !email || !senha) {
     showToast('Preencha nome, e-mail e senha.', true);
