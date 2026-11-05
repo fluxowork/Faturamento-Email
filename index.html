@@ -1361,7 +1361,7 @@ async function baixarAnexos(num) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `Carga_${num}_Anexos.zip`;
+  a.download = `Anexos_${num}.zip`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
