@@ -543,6 +543,9 @@
       box-shadow: 0 2px 8px rgba(226,148,18,.35);
     }
     .segmented-btn:hover:not(.active) { color: var(--text); }
+    @media (max-width: 480px) {
+      .segmented-btn { flex-direction: column; gap: 4px; padding: 9px 4px; font-size: .72rem; }
+    }
 
     /* ── Confirmation card ── */
     #confirmCard { border-left: 4px solid var(--orange); }
@@ -808,10 +811,13 @@
           <button type="button" class="segmented-btn" data-tipo="transportadora">
             <i class="fa-solid fa-truck"></i> Transportadora
           </button>
+          <button type="button" class="segmented-btn" data-tipo="contas_a_pagar">
+            <i class="fa-solid fa-file-invoice-dollar"></i> Contas a Pagar
+          </button>
         </div>
       </div>
 
-      <div class="field">
+      <div class="field" id="clientSelectField">
         <label for="clientSelect"><i class="fa-solid fa-list" style="margin-right:5px;"></i><span id="selectLabel">Cliente</span></label>
         <div class="select-wrap">
           <select id="clientSelect">
@@ -1209,6 +1215,38 @@ const clientSelect = document.getElementById('clientSelect');
 const clientInfo   = document.getElementById('clientInfo');
 const selectLabel  = document.getElementById('selectLabel');
 let tipoAtual = 'cliente';
+const clientSelectField = document.getElementById('clientSelectField');
+
+// Contas a Pagar: destinatários fixos, sem caixa de seleção
+const CONTAS_A_PAGAR = {
+  id: null,
+  nome: 'Contas a Pagar',
+  tipo: 'contas_a_pagar',
+  destinatario: 'financeirocp@adimax.com.br; mariana.proietti@adimax.com.br; contabil.corporativo@adimax.com.br',
+  cc: ''
+};
+const isContasAPagar = () => tipoAtual === 'contas_a_pagar';
+
+// Monta assunto e corpo conforme o tipo selecionado
+function montarEmail(num) {
+  if (isContasAPagar()) {
+    return {
+      assunto: 'Solicitação de Pagamento GNRE',
+      corpo: 'Olá,\n\nSegue a guia para pagamento:'
+    };
+  }
+  return {
+    assunto: `Documentos da Carga - ${num} - ${selectedClient ? selectedClient.nome : ''}`,
+    corpo: `Olá,\n\n Segue anexo com os arquivos XMLs e PDFs:\n\nCarga: ${num}`
+  };
+}
+
+function mostrarContasAPagar() {
+  selectedClient = CONTAS_A_PAGAR;
+  document.getElementById('chipTo').textContent = CONTAS_A_PAGAR.destinatario;
+  document.getElementById('chipCc').textContent = '—';
+  clientInfo.style.display = 'block';
+}
 
 function popularSelect(tipo) {
   clientSelect.innerHTML = '';
@@ -1234,12 +1272,19 @@ document.querySelectorAll('.segmented-btn').forEach(btn => {
     document.querySelectorAll('.segmented-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     tipoAtual = btn.dataset.tipo;
-    selectLabel.textContent = tipoAtual === 'cliente' ? 'Cliente' : 'Transportadora';
 
     // Reset seleção ao trocar de tipo
     selectedClient = null;
     clientInfo.style.display = 'none';
-    popularSelect(tipoAtual);
+
+    if (isContasAPagar()) {
+      clientSelectField.style.display = 'none';
+      mostrarContasAPagar();
+    } else {
+      clientSelectField.style.display = '';
+      selectLabel.textContent = tipoAtual === 'cliente' ? 'Cliente' : 'Transportadora';
+      popularSelect(tipoAtual);
+    }
     updatePreview();
   });
 });
@@ -1353,7 +1398,7 @@ function renderFileList() {
 }
 
 // Compacta os arquivos selecionados em um único .zip e baixa
-async function baixarAnexos(num) {
+async function baixarAnexos(nomeArquivo) {
   const zip = new JSZip();
   selectedFiles.forEach(file => zip.file(file.name, file));
 
@@ -1361,7 +1406,7 @@ async function baixarAnexos(num) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `Anexos_${num}.zip`;
+  a.download = nomeArquivo;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -1393,6 +1438,13 @@ function updatePreview() {
     prevCc.innerHTML = `<em class="preview-placeholder">[—]</em>`;
   }
 
+  // Contas a Pagar: mensagem própria, sem número de carga
+  if (isContasAPagar()) {
+    subjectEl.innerHTML = ` Solicitação de Pagamento GNRE`;
+    bodyEl.innerHTML    = `Olá,<br><br>Segue a guia para pagamento:`;
+    return;
+  }
+
   // Assunto e corpo
   const nomeCliente = selectedClient ? ` - <span style="color:var(--text-muted); font-weight:500;">${selectedClient.nome}</span>` : '';
   if (num) {
@@ -1409,7 +1461,9 @@ function updatePreview() {
 ════════════════════════════════════════ */
 document.getElementById('btnCopy').addEventListener('click', () => {
   const num  = cargaNum.value.trim() || '[número da carga]';
-  const text = `Assunto: Documentos da Carga - ${num}\n\nOlá,\n\nSegue anexo com os arquivos XMLs e PDFs:\n\nCarga: ${num}`;
+  const text = isContasAPagar()
+    ? `Assunto: Solicitação de Pagamento GNRE\n\nOlá,\n\nSegue a guia para pagamento:`
+    : `Assunto: Documentos da Carga - ${num}\n\nOlá,\n\nSegue anexo com os arquivos XMLs e PDFs:\n\nCarga: ${num}`;
   navigator.clipboard.writeText(text).then(() => showToast('Mensagem copiada!')).catch(() => showToast('Erro ao copiar.'));
 });
 
@@ -1436,7 +1490,8 @@ btnSend.addEventListener('click', async () => {
   }
   document.getElementById('faturistaError').style.display = 'none';
 
-  if (!num) {
+  // Em Contas a Pagar o número da carga é opcional
+  if (!num && !isContasAPagar()) {
     document.getElementById('cargaError').style.display = 'block';
     cargaNum.focus();
     return;
@@ -1450,8 +1505,10 @@ btnSend.addEventListener('click', async () => {
 
   const to      = selectedClient.destinatario;
   const cc      = selectedClient.cc || '';
-  const subject = encodeURIComponent(`Documentos da Carga - ${num} - ${selectedClient.nome}`);
-  const body    = encodeURIComponent(`Olá,\n\n Segue anexo com os arquivos XMLs e PDFs:\n\nCarga: ${num}`);
+  const email   = montarEmail(num);
+  const subject = encodeURIComponent(email.assunto);
+  const body    = encodeURIComponent(email.corpo);
+  const zipNome = isContasAPagar() ? `GNRE_Anexos${num ? '_' + num : ''}.zip` : `Anexos_${num}.zip`;
 
   const mailto = `mailto:${to}?${cc ? 'cc=' + cc + '&' : ''}subject=${subject}&body=${body}`;
 
@@ -1460,7 +1517,7 @@ btnSend.addEventListener('click', async () => {
     const originalHtml = btnSend.innerHTML;
     btnSend.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Compactando arquivos...';
     try {
-      await baixarAnexos(num);
+      await baixarAnexos(zipNome);
     } catch (err) {
       showToast('Erro ao compactar os arquivos. Tente novamente.', 'warning');
       btnSend.disabled = false;
@@ -1487,14 +1544,14 @@ btnSend.addEventListener('click', async () => {
     faturista: faturista,
     cliente: selectedClient.nome,
     tipo: selectedClient.tipo,
-    carga: num,
+    carga: num || '—',
     destinatario: to,
     cc: selectedClient.cc || '',
     status: 'Enviado'
   };
 
   // Exibe o card de confirmação
-  document.getElementById('confirmCarga').textContent   = num;
+  document.getElementById('confirmCarga').textContent   = num || selectedClient.nome;
   document.getElementById('confirmCliente').textContent = selectedClient.nome;
   confirmCheck.checked = false;
   btnConfirmSend.disabled = true;
@@ -1532,9 +1589,13 @@ btnConfirmSend.addEventListener('click', async () => {
   btnSend.disabled = false;
 
   cargaNum.value = '';
-  selectedClient = null;
-  clientInfo.style.display = 'none';
-  clientSelect.value = '';
+  if (isContasAPagar()) {
+    mostrarContasAPagar();
+  } else {
+    selectedClient = null;
+    clientInfo.style.display = 'none';
+    clientSelect.value = '';
+  }
   selectedFiles = [];
   renderFileList();
   updatePreview();
@@ -1583,7 +1644,7 @@ async function renderReport(filterText = '', filterDate = '') {
       <td style="white-space:nowrap;">${e.data} <span style="color:var(--text-muted);">${e.hora}</span></td>
       <td style="font-size:.78rem;">${e.faturista || '—'}</td>
       <td><strong>${e.cliente}</strong></td>
-      <td>${e.tipo ? `<span class="badge-tipo">${e.tipo === 'cliente' ? 'Cliente' : 'Transportadora'}</span>` : '—'}</td>
+      <td>${e.tipo ? `<span class="badge-tipo">${{ cliente: 'Cliente', transportadora: 'Transportadora', contas_a_pagar: 'Contas a Pagar' }[e.tipo] || e.tipo}</span>` : '—'}</td>
       <td class="td-num">${e.carga}</td>
       <td style="font-size:.78rem;">${e.destinatario}</td>
       <td><span class="badge badge-sent"><i class="fa-solid fa-check" style="margin-right:3px;"></i>${e.status}</span></td>
