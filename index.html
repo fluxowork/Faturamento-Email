@@ -754,7 +754,7 @@
       <div class="card-header">
         <div class="card-icon"><i class="fa-solid fa-user-tie"></i></div>
         <div>
-          <div class="card-title">Usuário</div>
+          <div class="card-title">Faturista</div>
           <div class="card-subtitle">Entre com seu login para identificar o envio</div>
         </div>
       </div>
@@ -847,7 +847,7 @@
         <div class="card-icon"><i class="fa-solid fa-box"></i></div>
         <div>
           <div class="card-title">Número da Carga</div>
-          <div class="card-subtitle">Se for contas a pagar, não preencher esse campo!</div>
+          <div class="card-subtitle">Campo obrigatório</div>
         </div>
       </div>
       <div class="field" style="margin-bottom:0;">
@@ -1017,7 +1017,7 @@
             <tr>
               <th>Ordem</th>
               <th>Data / Hora</th>
-              <th>Usuário</th>
+              <th>Faturista</th>
               <th>Cliente</th>
               <th>Tipo</th>
               <th>Nº Carga</th>
@@ -1244,9 +1244,28 @@ function montarEmail(num) {
 function mostrarContasAPagar() {
   selectedClient = CONTAS_A_PAGAR;
   document.getElementById('chipTo').textContent = CONTAS_A_PAGAR.destinatario;
-  document.getElementById('chipCc').textContent = '—';
+  document.getElementById('chipCc').textContent = CONTAS_A_PAGAR.cc || '—';
   clientInfo.style.display = 'block';
 }
+
+// Busca no Supabase os e-mails de Contas a Pagar (editáveis no admin).
+// Se falhar, continua com os valores padrão definidos acima.
+async function carregarContasAPagar() {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/config_contas_a_pagar?select=*&id=eq.1`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+    });
+    if (!res.ok) return;
+    const rows = await res.json();
+    if (!rows.length || !rows[0].destinatario) return;
+    CONTAS_A_PAGAR.destinatario = rows[0].destinatario;
+    CONTAS_A_PAGAR.cc = rows[0].cc || '';
+    if (isContasAPagar()) { mostrarContasAPagar(); updatePreview(); }
+  } catch (err) {
+    console.error(err);
+  }
+}
+carregarContasAPagar();
 
 function popularSelect(tipo) {
   clientSelect.innerHTML = '';
