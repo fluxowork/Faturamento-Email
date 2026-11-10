@@ -233,6 +233,23 @@
     <div class="tab-panel active" id="panel-cadastro">
 
       <div class="card">
+        <div class="card-title"><i class="fa-solid fa-file-invoice-dollar" style="margin-right:6px; color:var(--orange-dk);"></i>Contas a Pagar</div>
+        <div class="card-subtitle">E-mails usados no envio de Contas a Pagar (guia GNRE) no site principal</div>
+
+        <div class="field">
+          <label for="capDestinatario">Destinatário(s)* — separe múltiplos e-mails por ;</label>
+          <textarea id="capDestinatario" placeholder="email1@empresa.com; email2@empresa.com"></textarea>
+        </div>
+        <div class="field">
+          <label for="capCc">CC (opcional) — separe múltiplos e-mails por ;</label>
+          <textarea id="capCc" placeholder="copia@empresa.com"></textarea>
+        </div>
+        <div class="form-actions">
+          <button class="btn-primary" id="btnSalvarCap"><i class="fa-solid fa-floppy-disk"></i> Salvar e-mails de Contas a Pagar</button>
+        </div>
+      </div>
+
+      <div class="card">
         <div class="card-title" id="formCadastroTitle">Novo Cadastro</div>
         <div class="card-subtitle">Preencha os dados do cliente ou transportadora</div>
 
@@ -387,6 +404,7 @@ function showApp(loggedIn) {
   btnLogout.style.display   = loggedIn ? 'flex' : 'none';
   if (loggedIn) {
     carregarCadastros();
+    carregarContasAPagar();
     carregarUsuarios();
   }
 }
@@ -579,6 +597,45 @@ document.getElementById('btnSalvarCadastro').addEventListener('click', async () 
     }
     limparFormCadastro();
     carregarCadastros();
+  } catch (err) {
+    showToast(err.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+/* ════════════════════════════════════════
+   CONTAS A PAGAR — e-mails (linha única, id = 1)
+════════════════════════════════════════ */
+async function carregarContasAPagar() {
+  try {
+    const res = await sbAuthFetch('config_contas_a_pagar?select=*&id=eq.1');
+    const rows = await res.json();
+    if (rows.length) {
+      document.getElementById('capDestinatario').value = rows[0].destinatario || '';
+      document.getElementById('capCc').value = rows[0].cc || '';
+    }
+  } catch (err) {
+    showToast('Não foi possível carregar os e-mails de Contas a Pagar. Rode o SQL de configuração no Supabase.', true);
+  }
+}
+
+document.getElementById('btnSalvarCap').addEventListener('click', async () => {
+  const destinatario = document.getElementById('capDestinatario').value.trim();
+  const cc = document.getElementById('capCc').value.trim();
+  if (!destinatario) {
+    showToast('Informe ao menos um destinatário.', true);
+    return;
+  }
+  const btn = document.getElementById('btnSalvarCap');
+  btn.disabled = true;
+  try {
+    await sbAuthFetch('config_contas_a_pagar', {
+      method: 'POST',
+      headers: { 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({ id: 1, destinatario, cc: cc || null })
+    });
+    showToast('E-mails de Contas a Pagar atualizados!');
   } catch (err) {
     showToast(err.message, true);
   } finally {
