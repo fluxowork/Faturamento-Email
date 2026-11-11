@@ -919,6 +919,11 @@ async function carregarUsuarios() {
     const { users } = await chamarManageUsers({ action: 'list' });
     usuariosCache = users;
     renderUsuarios(users);
+    // A função antiga do Supabase não devolve perfil/fábrica: avisa na tela
+    if (users.length && users.every(u => !('fabricaId' in u))) {
+      document.getElementById('usuarioCount').innerHTML =
+        '<span style="color:#DC2626; font-weight:600;">⚠ A função manage-users publicada no Supabase está desatualizada (não salva nem mostra perfil e fábrica). Cole o código novo e faça o Deploy.</span>';
+    }
   } catch (err) {
     list.innerHTML = `<div class="empty-msg">Erro ao carregar: ${err.message}</div>`;
   }
@@ -994,8 +999,12 @@ document.getElementById('btnSalvarUsuario').addEventListener('click', async () =
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Criando...';
 
   try {
-    await chamarManageUsers({ action: 'create', nome, email, password: senha, role, fabrica_id: fabricaId ? Number(fabricaId) : null });
-    showToast(`Usuário ${nome} criado com sucesso!`);
+    const resp = await chamarManageUsers({ action: 'create', nome, email, password: senha, role, fabrica_id: fabricaId ? Number(fabricaId) : null });
+    if (!resp.user || !resp.user.role) {
+      showToast('Usuário criado SEM perfil e fábrica: a função manage-users do Supabase está desatualizada. Atualize a função e recrie o usuário.', true);
+    } else {
+      showToast(`Usuário ${nome} criado com sucesso!`);
+    }
     document.getElementById('novoUserNome').value = '';
     document.getElementById('novoUserEmail').value = '';
     document.getElementById('novoUserSenha').value = '';
