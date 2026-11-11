@@ -1067,13 +1067,58 @@ let envios         = [];
 const SUPABASE_URL = 'https://steshsjylmoiqwdcpytu.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0ZXNoc2p5bG1vaXF3ZGNweXR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNTA3MzEsImV4cCI6MjA5NzgyNjczMX0.7vPoFH69O_P66P2ZxIk3igppQl75mNb9GB9AURaTyd8';
 
+/* ── Sessão: tokens salvos no navegador, com renovação automática ── */
+function salvarSessao(d) {
+  localStorage.setItem('adimax_access_token', d.access_token);
+  if (d.refresh_token) localStorage.setItem('adimax_refresh_token', d.refresh_token);
+}
+function limparSessao() {
+  localStorage.removeItem('adimax_access_token');
+  localStorage.removeItem('adimax_refresh_token');
+}
+function expiraEm(token) {
+  try {
+    const p = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(p)).exp * 1000;
+  } catch (e) { return 0; }
+}
+// Devolve um token válido (renova com o refresh token quando está perto de expirar)
+function claimsDoToken(token) {
+  try {
+    const p = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(p)).app_metadata || {};
+  } catch (e) { return {}; }
+}
+async function obterToken(forcar = false) {
+  const atual = localStorage.getItem('adimax_access_token');
+  if (!forcar && atual && expiraEm(atual) - Date.now() > 60000) return atual;
+
+  const refresh = localStorage.getItem('adimax_refresh_token');
+  if (!refresh) return null;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+      body: JSON.stringify({ refresh_token: refresh })
+    });
+    if (!res.ok) { limparSessao(); return null; }
+    const d = await res.json();
+    salvarSessao(d);
+    return d.access_token;
+  } catch (e) {
+    return atual; // sem rede: tenta com o que tem
+  }
+}
+
 async function sbInsert(r) {
+  const token = await obterToken();
+  if (!token) throw new Error('Sessão expirada. Faça login novamente.');
   const res = await fetch(`${SUPABASE_URL}/rest/v1/envios`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Authorization': `Bearer ${token}`,
       'Prefer': 'return=minimal'
     },
     body: JSON.stringify(r)
@@ -1082,12 +1127,15 @@ async function sbInsert(r) {
 }
 
 async function sbSelect(filtros = {}) {
-  let url = `${SUPABASE_URL}/rest/v1/envios?order=id.desc&limit=500`;
+  const token = await obterToken();
+  if (!token || !usuarioLogado || !usuarioLogado.fabricaId) return [];
+  let url = `${SUPABASE_URL}/rest/v1/envios?order=id.desc&limit=500&fabrica_id=eq.${usuarioLogado.fabricaId}`;
   if (filtros.texto) url += `&or=(carga.ilike.*${encodeURIComponent(filtros.texto)}*,cliente.ilike.*${encodeURIComponent(filtros.texto)}*,destinatario.ilike.*${encodeURIComponent(filtros.texto)}*)`;
   if (filtros.data)  url += `&data=eq.${filtros.data}`;
   const res = await fetch(url, {
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token}` }
   });
+  if (!res.ok) return [];
   return res.json();
 }
 
@@ -1114,10 +1162,22 @@ const loginLogged  = document.getElementById('loginLogged');
 const btnFazerLogin = document.getElementById('btnFazerLogin');
 const btnSair       = document.getElementById('btnSair');
 
-let usuarioLogado = null; // { id, email, nome }
+let usuarioLogado = null; // { id, email, nome, role, fabricaId, fabricaNome }
 
 function iniciaisNome(nome) {
   return nome.split(' ').filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join('');
+}
+
+function montarUsuario(u) {
+  const am = u.app_metadata || {};
+  return {
+    id: u.id,
+    email: u.email,
+    nome: (u.user_metadata && u.user_metadata.nome) || u.email,
+    role: am.role || null,
+    fabricaId: am.fabrica_id != null ? Number(am.fabrica_id) : null,
+    fabricaNome: ''
+  };
 }
 
 function renderLogin() {
@@ -1126,7 +1186,8 @@ function renderLogin() {
     loginLogged.style.display = 'flex';
     document.getElementById('loginAvatar').textContent = iniciaisNome(usuarioLogado.nome);
     document.getElementById('loginNome').textContent = usuarioLogado.nome;
-    document.getElementById('loginEmailLogado').textContent = usuarioLogado.email;
+    document.getElementById('loginEmailLogado').textContent =
+      usuarioLogado.email + (usuarioLogado.fabricaNome ? ' · ' + usuarioLogado.fabricaNome : '');
     document.getElementById('faturistaError').style.display = 'none';
   } else {
     loginForm.style.display = 'block';
@@ -1134,29 +1195,52 @@ function renderLogin() {
   }
 }
 
-// Restaura sessão salva no navegador (se existir e ainda for válida)
-async function restaurarSessao() {
-  const token = localStorage.getItem('adimax_access_token');
-  if (!token) { renderLogin(); return; }
+// Depois de logar (ou restaurar a sessão): busca a fábrica e carrega os dados dela
+async function aposLogin() {
+  if (usuarioLogado.fabricaId) {
+    try {
+      const token = await obterToken();
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/fabricas?select=nome&id=eq.${usuarioLogado.fabricaId}`, {
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}` }
+      });
+      const rows = await res.json();
+      usuarioLogado.fabricaNome = (rows[0] && rows[0].nome) || '';
+    } catch (e) { console.error(e); }
+  } else {
+    showToast('Seu usuário não está vinculado a uma fábrica. Fale com o administrador.', 'warning');
+  }
+  renderLogin();
+  await Promise.all([carregarCadastros(), carregarContasAPagar()]);
+}
 
+// Restaura sessão salva no navegador (renova o token se necessário)
+async function restaurarSessao() {
   try {
+    const token = await obterToken();
+    if (!token) throw new Error('AUTH');
     const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}` }
     });
-    if (!res.ok) throw new Error('Sessão expirada');
-    const data = await res.json();
-    usuarioLogado = {
-      id: data.id,
-      email: data.email,
-      nome: data.user_metadata?.nome || data.email
-    };
+    if (res.status === 401 || res.status === 403) throw new Error('AUTH');
+    if (!res.ok) throw new Error('REDE');
+    usuarioLogado = montarUsuario(await res.json());
+
+    // Token antigo (anterior à atualização) não traz perfil/fábrica e o banco devolveria
+    // listas vazias: renova para pegar as permissões atuais.
+    const claims = claimsDoToken(token);
+    if (Number(claims.fabrica_id || 0) !== Number(usuarioLogado.fabricaId || 0) ||
+        (claims.role || null) !== usuarioLogado.role) {
+      const novo = await obterToken(true);
+      if (!novo) throw new Error('AUTH');
+    }
+    await aposLogin();
   } catch (err) {
-    localStorage.removeItem('adimax_access_token');
+    if (err.message === 'AUTH') limparSessao();
     usuarioLogado = null;
+    renderLogin();
+    carregarCadastros();
   }
-  renderLogin();
 }
-restaurarSessao();
 
 btnFazerLogin.addEventListener('click', async () => {
   const email = document.getElementById('loginEmail').value.trim();
@@ -1182,16 +1266,13 @@ btnFazerLogin.addEventListener('click', async () => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error_description || data.msg || 'Login ou senha inválidos.');
 
-    localStorage.setItem('adimax_access_token', data.access_token);
-    usuarioLogado = {
-      id: data.user.id,
-      email: data.user.email,
-      nome: data.user.user_metadata?.nome || data.user.email
-    };
+    salvarSessao(data);
+    usuarioLogado = montarUsuario(data.user);
     document.getElementById('loginEmail').value = '';
     document.getElementById('loginSenha').value = '';
     renderLogin();
     showToast(`Login realizado como ${usuarioLogado.nome}.`);
+    await aposLogin();
   } catch (err) {
     document.getElementById('loginErrorMsg').textContent = err.message;
     errEl.style.display = 'block';
@@ -1202,10 +1283,8 @@ btnFazerLogin.addEventListener('click', async () => {
 });
 
 btnSair.addEventListener('click', () => {
-  localStorage.removeItem('adimax_access_token');
-  usuarioLogado = null;
-  renderLogin();
-  showToast('Você saiu da sua conta.');
+  limparSessao();
+  location.reload(); // limpa dados da fábrica e o formulário
 });
 
 /* ════════════════════════════════════════
@@ -1222,7 +1301,7 @@ const CONTAS_A_PAGAR = {
   id: null,
   nome: 'Contas a Pagar',
   tipo: 'contas_a_pagar',
-  destinatario: 'financeirocp@adimax.com.br; mariana.proietti@adimax.com.br; contabil.corporativo@adimax.com.br',
+  destinatario: '',   // carregado do Supabase (cada fábrica tem os seus)
   cc: ''
 };
 const isContasAPagar = () => tipoAtual === 'contas_a_pagar';
@@ -1243,29 +1322,34 @@ function montarEmail(num) {
 
 function mostrarContasAPagar() {
   selectedClient = CONTAS_A_PAGAR;
-  document.getElementById('chipTo').textContent = CONTAS_A_PAGAR.destinatario;
+  document.getElementById('chipTo').textContent = CONTAS_A_PAGAR.destinatario || '— não cadastrado para sua fábrica —';
   document.getElementById('chipCc').textContent = CONTAS_A_PAGAR.cc || '—';
   clientInfo.style.display = 'block';
 }
 
-// Busca no Supabase os e-mails de Contas a Pagar (editáveis no admin).
-// Se falhar, continua com os valores padrão definidos acima.
+// Busca no Supabase os e-mails de Contas a Pagar da fábrica do usuário (editáveis no admin)
 async function carregarContasAPagar() {
+  CONTAS_A_PAGAR.destinatario = '';
+  CONTAS_A_PAGAR.cc = '';
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/config_contas_a_pagar?select=*&id=eq.1`, {
-      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
-    });
-    if (!res.ok) return;
-    const rows = await res.json();
-    if (!rows.length || !rows[0].destinatario) return;
-    CONTAS_A_PAGAR.destinatario = rows[0].destinatario;
-    CONTAS_A_PAGAR.cc = rows[0].cc || '';
-    if (isContasAPagar()) { mostrarContasAPagar(); updatePreview(); }
+    const token = await obterToken();
+    if (token && usuarioLogado && usuarioLogado.fabricaId) {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/contas_a_pagar_emails?select=*&fabrica_id=eq.${usuarioLogado.fabricaId}`, {
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const rows = await res.json();
+        if (rows.length) {
+          CONTAS_A_PAGAR.destinatario = rows[0].destinatario || '';
+          CONTAS_A_PAGAR.cc = rows[0].cc || '';
+        }
+      }
+    }
   } catch (err) {
     console.error(err);
   }
+  if (isContasAPagar()) { mostrarContasAPagar(); updatePreview(); }
 }
-carregarContasAPagar();
 
 function popularSelect(tipo) {
   clientSelect.innerHTML = '';
@@ -1273,7 +1357,11 @@ function popularSelect(tipo) {
   optDefault.value = '';
   optDefault.disabled = true;
   optDefault.selected = true;
-  optDefault.textContent = tipo === 'cliente' ? '— Selecione um cliente —' : '— Selecione uma transportadora —';
+  const temItens = CLIENTES.some(c => c.tipo === tipo);
+  const nomeTipo = tipo === 'cliente' ? 'cliente' : 'transportadora';
+  optDefault.textContent = (usuarioLogado && usuarioLogado.fabricaId && !temItens)
+    ? `— Nenhum(a) ${nomeTipo} cadastrado(a) na sua fábrica —`
+    : `— Selecione ${tipo === 'cliente' ? 'um' : 'uma'} ${nomeTipo} —`;
   clientSelect.appendChild(optDefault);
 
   CLIENTES.forEach(c => {
@@ -1327,12 +1415,19 @@ function selectClient(id) {
    CARREGAR CADASTROS DO SUPABASE
 ════════════════════════════════════════ */
 async function carregarCadastros() {
+  CLIENTES = [];
+  const token = await obterToken();
+  if (!token || !usuarioLogado || !usuarioLogado.fabricaId) {
+    clientSelect.innerHTML = '<option value="" disabled selected>— Faça login para carregar —</option>';
+    return;
+  }
+
   clientSelect.innerHTML = '<option value="" disabled selected>Carregando...</option>';
   clientSelect.disabled = true;
 
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/clientes?select=*&order=nome.asc`, {
-      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/clientes?select=*&fabrica_id=eq.${usuarioLogado.fabricaId}&order=nome.asc`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}` }
     });
     if (!res.ok) throw new Error('Falha ao carregar cadastros');
     CLIENTES = await res.json();
@@ -1344,8 +1439,6 @@ async function carregarCadastros() {
     popularSelect(tipoAtual);
   }
 }
-
-carregarCadastros();
 
 /* ════════════════════════════════════════
    ANEXOS
@@ -1509,6 +1602,11 @@ btnSend.addEventListener('click', async () => {
   }
   document.getElementById('faturistaError').style.display = 'none';
 
+  if (!usuarioLogado.fabricaId) {
+    showToast('Seu usuário não está vinculado a uma fábrica. Fale com o administrador.', 'warning');
+    return;
+  }
+
   // Em Contas a Pagar o número da carga é opcional
   if (!num && !isContasAPagar()) {
     document.getElementById('cargaError').style.display = 'block';
@@ -1519,6 +1617,11 @@ btnSend.addEventListener('click', async () => {
 
   if (!selectedClient) {
     showToast('Selecione um cliente ou transportadora antes de continuar.', 'warning');
+    return;
+  }
+
+  if (!selectedClient.destinatario) {
+    showToast('Os e-mails de Contas a Pagar não estão cadastrados para sua fábrica. Fale com o administrador.', 'warning');
     return;
   }
 
@@ -1561,6 +1664,7 @@ btnSend.addEventListener('click', async () => {
     data: now.toLocaleDateString('pt-BR'),
     hora: now.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}),
     faturista: faturista,
+    fabrica_id: usuarioLogado.fabricaId,
     cliente: selectedClient.nome,
     tipo: selectedClient.tipo,
     carga: num || '—',
@@ -1644,6 +1748,11 @@ async function renderReport(filterText = '', filterDate = '') {
     dataFiltro = `${d}/${m}/${y}`;
   }
 
+  if (!usuarioLogado) {
+    body.innerHTML = `<tr><td colspan="8" class="td-empty"><i class="fa-solid fa-lock" style="margin-right:6px;"></i>Faça login para ver o relatório da sua fábrica.</td></tr>`;
+    return;
+  }
+
   const data  = await sbSelect({ texto: filterText, data: dataFiltro });
   const todos = await sbSelect();
 
@@ -1715,6 +1824,9 @@ function showToast(msg, tipo) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => toast.classList.remove('show'), 2800);
 }
+
+// Inicia: restaura o login salvo (carrega clientes e e-mails da fábrica do usuário)
+restaurarSessao();
 </script>
 </body>
 </html>
