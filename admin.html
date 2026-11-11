@@ -226,11 +226,20 @@
   <main>
     <nav class="tab-nav">
       <button class="tab-btn active" data-tab="cadastro"><i class="fa-solid fa-building-user"></i> Clientes / Transportadoras</button>
+      <button class="tab-btn" data-tab="fabricas"><i class="fa-solid fa-industry"></i> Fábricas</button>
       <button class="tab-btn" data-tab="usuarios"><i class="fa-solid fa-key"></i> Usuários</button>
     </nav>
 
     <!-- ─── TAB: CLIENTES/TRANSPORTADORAS ─── -->
     <div class="tab-panel active" id="panel-cadastro">
+
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-industry" style="margin-right:6px; color:var(--orange-dk);"></i>Fábrica</div>
+        <div class="card-subtitle">Os cadastros e os e-mails de Contas a Pagar abaixo pertencem à fábrica selecionada</div>
+        <div class="field" style="margin-bottom:0;">
+          <select id="fabricaSelect"></select>
+        </div>
+      </div>
 
       <div class="card">
         <div class="card-title"><i class="fa-solid fa-file-invoice-dollar" style="margin-right:6px; color:var(--orange-dk);"></i>Contas a Pagar</div>
@@ -286,12 +295,36 @@
       </div>
     </div>
 
+    <!-- ─── TAB: FÁBRICAS ─── -->
+    <div class="tab-panel" id="panel-fabricas">
+
+      <div class="card">
+        <div class="card-title" id="formFabricaTitle">Nova Fábrica</div>
+        <div class="card-subtitle">Cada fábrica tem seus próprios clientes, transportadoras, e-mails de Contas a Pagar e relatório de envios</div>
+
+        <div class="field">
+          <label for="fabricaNome">Nome*</label>
+          <input type="text" id="fabricaNome" placeholder="Ex.: Fábrica Salto"/>
+        </div>
+        <div class="form-actions">
+          <button class="btn-primary" id="btnSalvarFabrica"><i class="fa-solid fa-floppy-disk"></i> Salvar</button>
+          <button class="btn-secondary" id="btnCancelarFabrica" style="display:none;"><i class="fa-solid fa-xmark"></i> Cancelar edição</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Fábricas cadastradas</div>
+        <div class="card-subtitle" id="fabricaCount">Carregando...</div>
+        <div id="fabricaList"></div>
+      </div>
+    </div>
+
     <!-- ─── TAB: USUÁRIOS ─── -->
     <div class="tab-panel" id="panel-usuarios">
 
       <div class="card">
         <div class="card-title">Novo Usuário de Acesso</div>
-        <div class="card-subtitle">Cria um login para esta tela de administração e para o site de envio (campo Faturista)</div>
+        <div class="card-subtitle">Faturistas usam o site de envio da própria fábrica. Administradores de fábrica também editam os cadastros e e-mails da própria fábrica aqui. Administradores gerais acessam todas as fábricas.</div>
 
         <div class="field">
           <label for="novoUserNome">Nome</label>
@@ -300,6 +333,20 @@
         <div class="field">
           <label for="novoUserEmail">E-mail</label>
           <input type="email" id="novoUserEmail" placeholder="pessoa@adimax.com.br" autocomplete="off"/>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="novoUserRole">Perfil</label>
+            <select id="novoUserRole">
+              <option value="faturista">Faturista</option>
+              <option value="admin_fabrica">Administrador de fábrica</option>
+              <option value="admin_geral">Administrador geral</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="novoUserFabrica">Fábrica</label>
+            <select id="novoUserFabrica"></select>
+          </div>
         </div>
         <div class="row">
           <div class="field">
@@ -364,6 +411,18 @@ const loginScreen = document.getElementById('loginScreen');
 const appScreen   = document.getElementById('appScreen');
 const btnLogout   = document.getElementById('btnLogout');
 
+let perfil = null; // { role, fabricaId } de quem está logado no admin
+
+function lerPerfil(u) {
+  const am = (u && u.app_metadata) || {};
+  return { role: am.role || null, fabricaId: am.fabrica_id != null ? Number(am.fabrica_id) : null };
+}
+// admin_geral: tudo | admin_fabrica: só a própria fábrica (precisa ter fábrica)
+function podeAdministrar(u) {
+  const p = lerPerfil(u);
+  return p.role === 'admin_geral' || (p.role === 'admin_fabrica' && !!p.fabricaId);
+}
+
 async function login(email, password) {
   const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
     method: 'POST',
@@ -372,6 +431,8 @@ async function login(email, password) {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error_description || data.msg || 'Login ou senha inválidos.');
+  if (!podeAdministrar(data.user)) throw new Error('Acesso restrito aos administradores.');
+  perfil = lerPerfil(data.user);
   accessToken = data.access_token;
   sessionStorage.setItem('adimax_admin_token', accessToken);
   return data;
@@ -389,7 +450,9 @@ async function checkSession() {
   const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
     headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${accessToken}` }
   });
-  if (res.ok) {
+  const user = res.ok ? await res.json() : null;
+  if (user && podeAdministrar(user)) {
+    perfil = lerPerfil(user);
     showApp(true);
   } else {
     accessToken = null;
@@ -402,11 +465,20 @@ function showApp(loggedIn) {
   loginScreen.style.display = loggedIn ? 'none' : 'flex';
   appScreen.style.display   = loggedIn ? 'block' : 'none';
   btnLogout.style.display   = loggedIn ? 'flex' : 'none';
-  if (loggedIn) {
-    carregarCadastros();
-    carregarContasAPagar();
-    carregarUsuarios();
-  }
+  if (loggedIn) iniciarPainel();
+}
+
+async function iniciarPainel() {
+  const geral = perfil.role === 'admin_geral';
+  // Administrador de fábrica não vê as abas Fábricas e Usuários e fica preso à própria fábrica
+  document.querySelectorAll('.tab-btn[data-tab="fabricas"], .tab-btn[data-tab="usuarios"]')
+    .forEach(b => { b.style.display = geral ? '' : 'none'; });
+  document.getElementById('fabricaSelect').disabled = !geral;
+
+  await carregarFabricas();   // define a fábrica selecionada
+  carregarCadastros();
+  carregarContasAPagar();
+  if (geral) carregarUsuarios();
 }
 
 document.getElementById('btnLogin').addEventListener('click', async () => {
@@ -498,9 +570,15 @@ document.querySelectorAll('#tipoFormToggle .segmented-btn').forEach(btn => {
 
 async function carregarCadastros() {
   const list = document.getElementById('cadastroList');
+  if (!fabricaAtual) {
+    cadastros = [];
+    document.getElementById('cadastroCount').textContent = '';
+    list.innerHTML = '<div class="empty-msg">Cadastre uma fábrica na aba Fábricas para começar.</div>';
+    return;
+  }
   list.innerHTML = '<div class="empty-msg"><i class="fa-solid fa-spinner fa-spin"></i> Carregando...</div>';
   try {
-    const res = await sbAuthFetch('clientes?select=*&order=nome.asc');
+    const res = await sbAuthFetch(`clientes?select=*&fabrica_id=eq.${fabricaAtual}&order=nome.asc`);
     cadastros = await res.json();
     renderCadastros();
   } catch (err) {
@@ -583,7 +661,12 @@ document.getElementById('btnSalvarCadastro').addEventListener('click', async () 
     return;
   }
 
-  const payload = { nome, tipo: tipoFormAtual, destinatario, cc: cc || null, assunto: 'Documentos da Carga' };
+  if (!fabricaAtual) {
+    showToast('Selecione uma fábrica antes de cadastrar.', true);
+    return;
+  }
+
+  const payload = { nome, tipo: tipoFormAtual, destinatario, cc: cc || null, assunto: 'Documentos da Carga', fabrica_id: fabricaAtual };
   const btn = document.getElementById('btnSalvarCadastro');
   btn.disabled = true;
 
@@ -605,24 +688,33 @@ document.getElementById('btnSalvarCadastro').addEventListener('click', async () 
 });
 
 /* ════════════════════════════════════════
-   CONTAS A PAGAR — e-mails (linha única, id = 1)
+   CONTAS A PAGAR — e-mails da fábrica selecionada
 ════════════════════════════════════════ */
 async function carregarContasAPagar() {
+  const dest = document.getElementById('capDestinatario');
+  const cc = document.getElementById('capCc');
+  dest.value = '';
+  cc.value = '';
+  if (!fabricaAtual) return;
   try {
-    const res = await sbAuthFetch('config_contas_a_pagar?select=*&id=eq.1');
+    const res = await sbAuthFetch(`contas_a_pagar_emails?select=*&fabrica_id=eq.${fabricaAtual}`);
     const rows = await res.json();
     if (rows.length) {
-      document.getElementById('capDestinatario').value = rows[0].destinatario || '';
-      document.getElementById('capCc').value = rows[0].cc || '';
+      dest.value = rows[0].destinatario || '';
+      cc.value = rows[0].cc || '';
     }
   } catch (err) {
-    showToast('Não foi possível carregar os e-mails de Contas a Pagar. Rode o SQL de configuração no Supabase.', true);
+    showToast('Não foi possível carregar os e-mails de Contas a Pagar. Rode o SQL setup_fabricas.sql no Supabase.', true);
   }
 }
 
 document.getElementById('btnSalvarCap').addEventListener('click', async () => {
   const destinatario = document.getElementById('capDestinatario').value.trim();
   const cc = document.getElementById('capCc').value.trim();
+  if (!fabricaAtual) {
+    showToast('Selecione uma fábrica.', true);
+    return;
+  }
   if (!destinatario) {
     showToast('Informe ao menos um destinatário.', true);
     return;
@@ -630,14 +722,145 @@ document.getElementById('btnSalvarCap').addEventListener('click', async () => {
   const btn = document.getElementById('btnSalvarCap');
   btn.disabled = true;
   try {
-    await sbAuthFetch('config_contas_a_pagar', {
+    await sbAuthFetch('contas_a_pagar_emails?on_conflict=fabrica_id', {
       method: 'POST',
       headers: { 'Prefer': 'resolution=merge-duplicates' },
-      body: JSON.stringify({ id: 1, destinatario, cc: cc || null })
+      body: JSON.stringify({ fabrica_id: fabricaAtual, destinatario, cc: cc || null, updated_at: new Date().toISOString() })
     });
     showToast('E-mails de Contas a Pagar atualizados!');
   } catch (err) {
     showToast(err.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+/* ════════════════════════════════════════
+   FÁBRICAS
+════════════════════════════════════════ */
+let fabricas = [];
+let fabricaAtual = null;       // id da fábrica selecionada na aba Clientes
+let editandoFabricaId = null;
+let usuariosCache = [];
+
+const nomeFabrica = id => {
+  const f = fabricas.find(x => x.id === Number(id));
+  return f ? f.nome : '—';
+};
+
+async function carregarFabricas() {
+  try {
+    const res = await sbAuthFetch('fabricas?select=*&order=nome.asc');
+    fabricas = await res.json();
+  } catch (err) {
+    fabricas = [];
+    showToast('Erro ao carregar fábricas. Rode o SQL setup_fabricas.sql no Supabase.', true);
+  }
+  const salva = Number(sessionStorage.getItem('adimax_admin_fabrica'));
+  fabricaAtual = fabricas.some(f => f.id === salva) ? salva : (fabricas[0] ? fabricas[0].id : null);
+  if (perfil && perfil.role === 'admin_fabrica') fabricaAtual = perfil.fabricaId;
+  renderFabricaSelects();
+  renderFabricas();
+}
+
+function renderFabricaSelects() {
+  const sel = document.getElementById('fabricaSelect');
+  sel.innerHTML = fabricas.length
+    ? fabricas.map(f => `<option value="${f.id}" ${f.id === fabricaAtual ? 'selected' : ''}>${f.nome}</option>`).join('')
+    : '<option value="">— nenhuma fábrica cadastrada —</option>';
+  popularFabricaUsuario();
+}
+
+document.getElementById('fabricaSelect').addEventListener('change', e => {
+  fabricaAtual = Number(e.target.value) || null;
+  if (fabricaAtual) sessionStorage.setItem('adimax_admin_fabrica', fabricaAtual);
+  limparFormCadastro();
+  carregarCadastros();
+  carregarContasAPagar();
+});
+
+function renderFabricas() {
+  const list = document.getElementById('fabricaList');
+  document.getElementById('fabricaCount').textContent = `${fabricas.length} fábrica(s)`;
+  if (!fabricas.length) {
+    list.innerHTML = '<div class="empty-msg">Nenhuma fábrica cadastrada.</div>';
+    return;
+  }
+  list.innerHTML = fabricas.map(f => `
+    <div class="list-item">
+      <div class="info"><div class="nome">${f.nome}</div></div>
+      <div class="actions">
+        <button class="icon-btn edit" title="Renomear" onclick="editarFabrica(${f.id})"><i class="fa-solid fa-pen"></i></button>
+        <button class="icon-btn del" title="Excluir" onclick="excluirFabrica(${f.id})"><i class="fa-solid fa-trash"></i></button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function limparFormFabrica() {
+  document.getElementById('fabricaNome').value = '';
+  document.getElementById('formFabricaTitle').textContent = 'Nova Fábrica';
+  document.getElementById('btnCancelarFabrica').style.display = 'none';
+  editandoFabricaId = null;
+}
+
+function editarFabrica(id) {
+  const f = fabricas.find(x => x.id === id);
+  if (!f) return;
+  editandoFabricaId = id;
+  document.getElementById('fabricaNome').value = f.nome;
+  document.getElementById('formFabricaTitle').textContent = `Renomeando: ${f.nome}`;
+  document.getElementById('btnCancelarFabrica').style.display = 'flex';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function excluirFabrica(id) {
+  const f = fabricas.find(x => x.id === id);
+  if (!f) return;
+  if (usuariosCache.some(u => u.fabricaId === id)) {
+    showToast('Há usuários vinculados a essa fábrica. Exclua-os antes.', true);
+    return;
+  }
+  if (!confirm(`Excluir a fábrica "${f.nome}"? Só é possível se ela não tiver clientes nem envios.`)) return;
+  try {
+    await sbAuthFetch(`fabricas?id=eq.${id}`, { method: 'DELETE' });
+    showToast('Fábrica excluída.');
+    if (editandoFabricaId === id) limparFormFabrica();
+    await carregarFabricas();
+    carregarCadastros();
+    carregarContasAPagar();
+  } catch (err) {
+    showToast(/23503|violates foreign key/.test(err.message)
+      ? 'Não é possível excluir: a fábrica tem clientes ou envios cadastrados.'
+      : err.message, true);
+  }
+}
+
+document.getElementById('btnCancelarFabrica').addEventListener('click', limparFormFabrica);
+
+document.getElementById('btnSalvarFabrica').addEventListener('click', async () => {
+  const nome = document.getElementById('fabricaNome').value.trim();
+  if (!nome) {
+    showToast('Informe o nome da fábrica.', true);
+    return;
+  }
+  const btn = document.getElementById('btnSalvarFabrica');
+  btn.disabled = true;
+  try {
+    if (editandoFabricaId) {
+      await sbAuthFetch(`fabricas?id=eq.${editandoFabricaId}`, { method: 'PATCH', body: JSON.stringify({ nome }) });
+      showToast('Fábrica renomeada!');
+    } else {
+      await sbAuthFetch('fabricas', { method: 'POST', body: JSON.stringify({ nome }) });
+      showToast('Fábrica adicionada!');
+    }
+    limparFormFabrica();
+    await carregarFabricas();
+    carregarCadastros();
+    carregarContasAPagar();
+    carregarUsuarios();
+  } catch (err) {
+    showToast(/23505|duplicate key/.test(err.message) ? 'Já existe uma fábrica com esse nome.' : err.message, true);
   } finally {
     btn.disabled = false;
   }
@@ -676,11 +899,25 @@ async function chamarManageUsers(payload) {
   return data;
 }
 
+// Faturista exige fábrica; administrador geral pode ficar sem
+function popularFabricaUsuario() {
+  const sel = document.getElementById('novoUserFabrica');
+  if (!sel) return;
+  const role = document.getElementById('novoUserRole').value;
+  const anterior = sel.value;
+  const opcoes = fabricas.map(f => `<option value="${f.id}">${f.nome}</option>`);
+  if (role === 'admin_geral') opcoes.unshift('<option value="">Nenhuma (só administração)</option>');
+  sel.innerHTML = opcoes.join('');
+  if (anterior && [...sel.options].some(o => o.value === anterior)) sel.value = anterior;
+}
+document.getElementById('novoUserRole').addEventListener('change', popularFabricaUsuario);
+
 async function carregarUsuarios() {
   const list = document.getElementById('usuarioList');
   list.innerHTML = '<div class="empty-msg"><i class="fa-solid fa-spinner fa-spin"></i> Carregando...</div>';
   try {
     const { users } = await chamarManageUsers({ action: 'list' });
+    usuariosCache = users;
     renderUsuarios(users);
   } catch (err) {
     list.innerHTML = `<div class="empty-msg">Erro ao carregar: ${err.message}</div>`;
@@ -697,9 +934,12 @@ function renderUsuarios(users) {
   list.innerHTML = users.map(u => `
     <div class="list-item">
       <div class="info">
-        <div class="nome">${u.nome || u.email}${u.souEu ? '<span class="badge-tipo">Você</span>' : ''}</div>
+        <div class="nome">${u.nome || u.email}${u.souEu ? '<span class="badge-tipo">Você</span>' : ''}<span class="badge-tipo">${{ admin_geral: 'Administrador geral', admin_fabrica: 'Administrador de fábrica', faturista: 'Faturista' }[u.role] || 'Sem perfil'}</span></div>
         <div class="detalhe">
           <i class="fa-solid fa-at" style="margin-right:4px;"></i>${u.email}
+        </div>
+        <div class="detalhe">
+          <i class="fa-solid fa-industry" style="margin-right:4px;"></i>${u.fabricaId ? nomeFabrica(u.fabricaId) : 'Nenhuma fábrica'}
         </div>
         <div class="detalhe">
           <i class="fa-solid fa-calendar" style="margin-right:4px;"></i>${new Date(u.created_at).toLocaleDateString('pt-BR')}
@@ -742,13 +982,19 @@ document.getElementById('btnSalvarUsuario').addEventListener('click', async () =
     showToast('As senhas não coincidem.', true);
     return;
   }
+  const role = document.getElementById('novoUserRole').value;
+  const fabricaId = document.getElementById('novoUserFabrica').value;
+  if (role !== 'admin_geral' && !fabricaId) {
+    showToast('Selecione a fábrica desse usuário.', true);
+    return;
+  }
 
   const btn = document.getElementById('btnSalvarUsuario');
   btn.disabled = true;
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Criando...';
 
   try {
-    await chamarManageUsers({ action: 'create', nome, email, password: senha });
+    await chamarManageUsers({ action: 'create', nome, email, password: senha, role, fabrica_id: fabricaId ? Number(fabricaId) : null });
     showToast(`Usuário ${nome} criado com sucesso!`);
     document.getElementById('novoUserNome').value = '';
     document.getElementById('novoUserEmail').value = '';
