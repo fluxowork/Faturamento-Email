@@ -324,7 +324,7 @@
 
       <div class="card">
         <div class="card-title">Novo Usuário de Acesso</div>
-        <div class="card-subtitle">Faturistas usam o site de envio da própria fábrica. Administradores de fábrica editam os cadastros e e-mails da própria fábrica e criam faturistas só para ela. Administradores gerais acessam todas as fábricas.</div>
+        <div class="card-subtitle">Colaboradores usam o site de envio da própria fábrica. Administradores de fábrica editam os cadastros e e-mails da própria fábrica e criam colaboradores só para ela. Administradores gerais acessam todas as fábricas.</div>
 
         <div class="field">
           <label for="novoUserNome">Nome</label>
@@ -338,7 +338,7 @@
           <div class="field">
             <label for="novoUserRole">Perfil</label>
             <select id="novoUserRole">
-              <option value="faturista">Faturista</option>
+              <option value="faturista">Colaborador</option>
               <option value="admin_fabrica">Administrador de fábrica</option>
               <option value="admin_geral">Administrador geral</option>
             </select>
@@ -513,11 +513,11 @@ async function iniciarPainel() {
     .forEach(b => { b.style.display = geral ? '' : 'none'; });
   document.getElementById('fabricaSelect').disabled = !geral;
 
-  // Formulário de usuário: administrador de fábrica só cria faturistas (da própria fábrica)
+  // Formulário de usuário: administrador de fábrica só cria colaboradores (da própria fábrica)
   const roleSel = document.getElementById('novoUserRole');
   roleSel.innerHTML = geral
-    ? '<option value="faturista">Faturista</option><option value="admin_fabrica">Administrador de fábrica</option><option value="admin_geral">Administrador geral</option>'
-    : '<option value="faturista">Faturista</option>';
+    ? '<option value="faturista">Colaborador</option><option value="admin_fabrica">Administrador de fábrica</option><option value="admin_geral">Administrador geral</option>'
+    : '<option value="faturista">Colaborador</option>';
   roleSel.disabled = !geral;
   document.getElementById('novoUserFabrica').disabled = !geral;
 
@@ -949,7 +949,7 @@ async function chamarManageUsers(payload) {
   return data;
 }
 
-// Faturista exige fábrica; administrador geral pode ficar sem
+// Colaborador exige fábrica; administrador geral pode ficar sem
 function popularFabricaUsuario() {
   const sel = document.getElementById('novoUserFabrica');
   if (!sel) return;
@@ -990,7 +990,7 @@ function renderUsuarios(users) {
   list.innerHTML = users.map(u => `
     <div class="list-item">
       <div class="info">
-        <div class="nome">${u.nome || u.email}${u.souEu ? '<span class="badge-tipo">Você</span>' : ''}<span class="badge-tipo">${{ admin_geral: 'Administrador geral', admin_fabrica: 'Administrador de fábrica', faturista: 'Faturista' }[u.role] || 'Sem perfil'}</span></div>
+        <div class="nome">${u.nome || u.email}${u.souEu ? '<span class="badge-tipo">Você</span>' : ''}<span class="badge-tipo">${{ admin_geral: 'Administrador geral', admin_fabrica: 'Administrador de fábrica', faturista: 'Colaborador' }[u.role] || 'Sem perfil'}</span></div>
         <div class="detalhe">
           <i class="fa-solid fa-at" style="margin-right:4px;"></i>${u.email}
         </div>
