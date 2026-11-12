@@ -324,7 +324,7 @@
 
       <div class="card">
         <div class="card-title">Novo Usuário de Acesso</div>
-        <div class="card-subtitle">Colaboradores usam o site de envio da própria fábrica. Administradores de fábrica editam os cadastros e e-mails da própria fábrica e criam colaboradoers só para ela. Administradores gerais acessam todas as fábricas.</div>
+        <div class="card-subtitle">Faturistas usam o site de envio da própria fábrica. Administradores de fábrica editam os cadastros e e-mails da própria fábrica e criam faturistas só para ela. Administradores gerais acessam todas as fábricas.</div>
 
         <div class="field">
           <label for="novoUserNome">Nome</label>
@@ -338,7 +338,7 @@
           <div class="field">
             <label for="novoUserRole">Perfil</label>
             <select id="novoUserRole">
-              <option value="Colaborador">Colaborador</option>
+              <option value="faturista">Faturista</option>
               <option value="admin_fabrica">Administrador de fábrica</option>
               <option value="admin_geral">Administrador geral</option>
             </select>
@@ -367,6 +367,40 @@
 
         <div class="form-actions">
           <button class="btn-primary" id="btnSalvarUsuario"><i class="fa-solid fa-user-plus"></i> Criar Usuário</button>
+        </div>
+      </div>
+
+      <div class="card" id="cardEditarUsuario" style="display:none;">
+        <div class="card-title" id="editUserTitulo">Editar Usuário</div>
+        <div class="card-subtitle">Altere o nome, o e-mail ou a senha. Deixe a senha em branco para mantê-la.</div>
+
+        <div class="field">
+          <label for="editUserNome">Nome</label>
+          <input type="text" id="editUserNome" autocomplete="off"/>
+        </div>
+        <div class="field">
+          <label for="editUserEmail">E-mail</label>
+          <input type="email" id="editUserEmail" autocomplete="off"/>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="editUserSenha">Nova senha</label>
+            <div class="pw-wrap">
+              <input type="password" id="editUserSenha" placeholder="Em branco = manter" autocomplete="new-password"/>
+              <button type="button" class="pw-toggle" data-target="editUserSenha"><i class="fa-solid fa-eye"></i></button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="editUserSenha2">Confirmar nova senha</label>
+            <div class="pw-wrap">
+              <input type="password" id="editUserSenha2" placeholder="Repita a nova senha" autocomplete="new-password"/>
+              <button type="button" class="pw-toggle" data-target="editUserSenha2"><i class="fa-solid fa-eye"></i></button>
+            </div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-primary" id="btnSalvarEdicaoUsuario"><i class="fa-solid fa-floppy-disk"></i> Salvar alterações</button>
+          <button class="btn-secondary" id="btnCancelarEdicaoUsuario"><i class="fa-solid fa-xmark"></i> Cancelar</button>
         </div>
       </div>
 
@@ -479,11 +513,11 @@ async function iniciarPainel() {
     .forEach(b => { b.style.display = geral ? '' : 'none'; });
   document.getElementById('fabricaSelect').disabled = !geral;
 
-  // Formulário de usuário: administrador de fábrica só cria Colaborador (da própria fábrica)
+  // Formulário de usuário: administrador de fábrica só cria faturistas (da própria fábrica)
   const roleSel = document.getElementById('novoUserRole');
   roleSel.innerHTML = geral
-    ? '<option value="Colaborador">Colaborador</option><option value="admin_fabrica">Administrador de fábrica</option><option value="admin_geral">Administrador geral</option>'
-    : '<option value="Colaborador">Colaborador</option>';
+    ? '<option value="faturista">Faturista</option><option value="admin_fabrica">Administrador de fábrica</option><option value="admin_geral">Administrador geral</option>'
+    : '<option value="faturista">Faturista</option>';
   roleSel.disabled = !geral;
   document.getElementById('novoUserFabrica').disabled = !geral;
 
@@ -906,12 +940,16 @@ async function chamarManageUsers(payload) {
     },
     body: JSON.stringify(payload)
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Erro na operação.');
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = data.error || data.message || 'Erro na operação.';
+    // Em erros de acesso, mostra qual função foi chamada (ajuda a achar função desatualizada)
+    throw new Error([401, 403, 404].includes(res.status) ? `${msg} [função: ${FUNCAO_USUARIOS}]` : msg);
+  }
   return data;
 }
 
-// Colaborador exige fábrica; administrador geral pode ficar sem
+// Faturista exige fábrica; administrador geral pode ficar sem
 function popularFabricaUsuario() {
   const sel = document.getElementById('novoUserFabrica');
   if (!sel) return;
@@ -952,7 +990,7 @@ function renderUsuarios(users) {
   list.innerHTML = users.map(u => `
     <div class="list-item">
       <div class="info">
-        <div class="nome">${u.nome || u.email}${u.souEu ? '<span class="badge-tipo">Você</span>' : ''}<span class="badge-tipo">${{ admin_geral: 'Administrador geral', admin_fabrica: 'Administrador de fábrica', Colaborador: 'Colaborador' }[u.role] || 'Sem perfil'}</span></div>
+        <div class="nome">${u.nome || u.email}${u.souEu ? '<span class="badge-tipo">Você</span>' : ''}<span class="badge-tipo">${{ admin_geral: 'Administrador geral', admin_fabrica: 'Administrador de fábrica', faturista: 'Faturista' }[u.role] || 'Sem perfil'}</span></div>
         <div class="detalhe">
           <i class="fa-solid fa-at" style="margin-right:4px;"></i>${u.email}
         </div>
@@ -965,6 +1003,7 @@ function renderUsuarios(users) {
         </div>
       </div>
       <div class="actions">
+        ${perfil.role === 'admin_geral' ? `<button class="icon-btn edit" title="Editar e-mail e senha" onclick="editarUsuario('${u.id}')"><i class="fa-solid fa-pen"></i></button>` : ''}
         ${(u.souEu || (perfil.role !== 'admin_geral' && u.role !== 'faturista')) ? '' : `<button class="icon-btn del" title="Excluir acesso" onclick="excluirUsuario('${u.id}','${u.email.replace(/'/g, "\\'")}')"><i class="fa-solid fa-trash"></i></button>`}
       </div>
     </div>
@@ -981,6 +1020,79 @@ async function excluirUsuario(id, email) {
     showToast(err.message, true);
   }
 }
+
+/* ── Editar usuário (e-mail, senha, nome) — só administrador geral ── */
+let editandoUserId = null;
+let editandoUserOriginal = null;
+
+function editarUsuario(id) {
+  const u = usuariosCache.find(x => x.id === id);
+  if (!u) return;
+  editandoUserId = id;
+  editandoUserOriginal = u;
+  document.getElementById('editUserTitulo').textContent = `Editando: ${u.nome || u.email}`;
+  document.getElementById('editUserNome').value = u.nome || '';
+  document.getElementById('editUserEmail').value = u.email || '';
+  document.getElementById('editUserSenha').value = '';
+  document.getElementById('editUserSenha2').value = '';
+  const card = document.getElementById('cardEditarUsuario');
+  card.style.display = 'block';
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function fecharEdicaoUsuario() {
+  editandoUserId = null;
+  editandoUserOriginal = null;
+  document.getElementById('cardEditarUsuario').style.display = 'none';
+}
+
+document.getElementById('btnCancelarEdicaoUsuario').addEventListener('click', fecharEdicaoUsuario);
+
+document.getElementById('btnSalvarEdicaoUsuario').addEventListener('click', async () => {
+  if (!editandoUserId) return;
+  const nome = document.getElementById('editUserNome').value.trim();
+  const email = document.getElementById('editUserEmail').value.trim();
+  const senha = document.getElementById('editUserSenha').value.trim();
+  const senha2 = document.getElementById('editUserSenha2').value.trim();
+
+  if (!email) {
+    showToast('O e-mail não pode ficar vazio.', true);
+    return;
+  }
+  if (senha && senha.length < 6) {
+    showToast('A nova senha precisa ter pelo menos 6 caracteres.', true);
+    return;
+  }
+  if (senha !== senha2) {
+    showToast('As senhas não coincidem.', true);
+    return;
+  }
+
+  // Envia só o que mudou
+  const payload = { action: 'update', id: editandoUserId };
+  if (email !== editandoUserOriginal.email) payload.email = email;
+  if (nome && nome !== (editandoUserOriginal.nome || '')) payload.nome = nome;
+  if (senha) payload.password = senha;
+  if (Object.keys(payload).length === 2) {
+    showToast('Nenhuma alteração para salvar.', true);
+    return;
+  }
+
+  const btn = document.getElementById('btnSalvarEdicaoUsuario');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
+  try {
+    await chamarManageUsers(payload);
+    showToast('Usuário atualizado com sucesso!');
+    fecharEdicaoUsuario();
+    carregarUsuarios();
+  } catch (err) {
+    showToast(err.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Salvar alterações';
+  }
+});
 
 document.getElementById('btnSalvarUsuario').addEventListener('click', async () => {
   const nome = document.getElementById('novoUserNome').value.trim();
