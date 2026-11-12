@@ -1153,7 +1153,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 });
 
 /* ════════════════════════════════════════
-   LOGIN DO FATURISTA (Supabase Auth)
+   LOGIN DO COLABORADOR (Supabase Auth)
    Login salvo no navegador (localStorage) —
    fica logado até clicar em "Sair"
 ════════════════════════════════════════ */
@@ -1800,7 +1800,7 @@ document.getElementById('btnClearFilter').addEventListener('click', () => {
 document.getElementById('btnExport').addEventListener('click', async () => {
   const todos = await sbSelect();
   if (!todos.length) { showToast('Nenhum dado para exportar.', 'warning'); return; }
-  const header = 'N°,Data,Hora,Faturista,Cliente,Tipo,Carga,Destinatário,CC,Status\n';
+  const header = 'N°,Data,Hora,Colaborador,Cliente,Tipo,Carga,Destinatário,CC,Status\n';
   const rows = todos.map((e, i) =>
     `${i+1},"${e.data}","${e.hora}","${e.faturista||''}","${e.cliente}","${e.tipo||''}","${e.carga}","${e.destinatario}","${e.cc||''}","${e.status}"`
   ).join('\n');
