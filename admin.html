@@ -324,7 +324,7 @@
 
       <div class="card">
         <div class="card-title">Novo Usuário de Acesso</div>
-        <div class="card-subtitle">Faturistas usam o site de envio da própria fábrica. Administradores de fábrica também editam os cadastros e e-mails da própria fábrica aqui. Administradores gerais acessam todas as fábricas.</div>
+        <div class="card-subtitle">Faturistas usam o site de envio da própria fábrica. Administradores de fábrica editam os cadastros e e-mails da própria fábrica e criam faturistas só para ela. Administradores gerais acessam todas as fábricas.</div>
 
         <div class="field">
           <label for="novoUserNome">Nome</label>
@@ -386,6 +386,10 @@
 /* ════════════════════════════════════════
    CONFIG SUPABASE
 ════════════════════════════════════════ */
+// Nome (slug) da Edge Function de usuários no Supabase.
+// Veja o nome real em Edge Functions → abra a função → endereço .../functions/v1/<nome>
+const FUNCAO_USUARIOS = 'hyper-service';
+
 const SUPABASE_URL = 'https://steshsjylmoiqwdcpytu.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0ZXNoc2p5bG1vaXF3ZGNweXR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNTA3MzEsImV4cCI6MjA5NzgyNjczMX0.7vPoFH69O_P66P2ZxIk3igppQl75mNb9GB9AURaTyd8';
 
@@ -470,15 +474,23 @@ function showApp(loggedIn) {
 
 async function iniciarPainel() {
   const geral = perfil.role === 'admin_geral';
-  // Administrador de fábrica não vê as abas Fábricas e Usuários e fica preso à própria fábrica
-  document.querySelectorAll('.tab-btn[data-tab="fabricas"], .tab-btn[data-tab="usuarios"]')
+  // Administrador de fábrica não vê a aba Fábricas e fica preso à própria fábrica
+  document.querySelectorAll('.tab-btn[data-tab="fabricas"]')
     .forEach(b => { b.style.display = geral ? '' : 'none'; });
   document.getElementById('fabricaSelect').disabled = !geral;
+
+  // Formulário de usuário: administrador de fábrica só cria faturistas (da própria fábrica)
+  const roleSel = document.getElementById('novoUserRole');
+  roleSel.innerHTML = geral
+    ? '<option value="faturista">Faturista</option><option value="admin_fabrica">Administrador de fábrica</option><option value="admin_geral">Administrador geral</option>'
+    : '<option value="faturista">Faturista</option>';
+  roleSel.disabled = !geral;
+  document.getElementById('novoUserFabrica').disabled = !geral;
 
   await carregarFabricas();   // define a fábrica selecionada
   carregarCadastros();
   carregarContasAPagar();
-  if (geral) carregarUsuarios();
+  carregarUsuarios();
 }
 
 document.getElementById('btnLogin').addEventListener('click', async () => {
@@ -885,7 +897,7 @@ document.querySelectorAll('.pw-toggle').forEach(btn => {
    sempre pela função manage-users, nunca direto)
 ════════════════════════════════════════ */
 async function chamarManageUsers(payload) {
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/manage-users`, {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/${FUNCAO_USUARIOS}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -903,6 +915,7 @@ async function chamarManageUsers(payload) {
 function popularFabricaUsuario() {
   const sel = document.getElementById('novoUserFabrica');
   if (!sel) return;
+  sel.disabled = !!perfil && perfil.role !== 'admin_geral';
   const role = document.getElementById('novoUserRole').value;
   const anterior = sel.value;
   const opcoes = fabricas.map(f => `<option value="${f.id}">${f.nome}</option>`);
@@ -952,7 +965,7 @@ function renderUsuarios(users) {
         </div>
       </div>
       <div class="actions">
-        ${u.souEu ? '' : `<button class="icon-btn del" title="Excluir acesso" onclick="excluirUsuario('${u.id}','${u.email.replace(/'/g, "\\'")}')"><i class="fa-solid fa-trash"></i></button>`}
+        ${(u.souEu || (perfil.role !== 'admin_geral' && u.role !== 'faturista')) ? '' : `<button class="icon-btn del" title="Excluir acesso" onclick="excluirUsuario('${u.id}','${u.email.replace(/'/g, "\\'")}')"><i class="fa-solid fa-trash"></i></button>`}
       </div>
     </div>
   `).join('');
