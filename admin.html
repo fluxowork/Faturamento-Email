@@ -258,6 +258,23 @@
         </div>
       </div>
 
+      <div class="card" id="cardComex" style="display:none;">
+        <div class="card-title"><i class="fa-solid fa-ship" style="margin-right:6px; color:var(--orange-dk);"></i>COMEX</div>
+        <div class="card-subtitle">E-mails usados no envio da aba COMEX no site principal (exclusivo da unidade Salto de Pirapora)</div>
+
+        <div class="field">
+          <label for="comexDestinatario">Destinatário(s)* — separe múltiplos e-mails por ;</label>
+          <textarea id="comexDestinatario" placeholder="email1@empresa.com; email2@empresa.com"></textarea>
+        </div>
+        <div class="field">
+          <label for="comexCc">CC (opcional) — separe múltiplos e-mails por ;</label>
+          <textarea id="comexCc" placeholder="copia@empresa.com"></textarea>
+        </div>
+        <div class="form-actions">
+          <button class="btn-primary" id="btnSalvarComex"><i class="fa-solid fa-floppy-disk"></i> Salvar e-mails de COMEX</button>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-title" id="formCadastroTitle">Novo Cadastro</div>
         <div class="card-subtitle">Preencha os dados do cliente ou transportadora</div>
@@ -524,6 +541,7 @@ async function iniciarPainel() {
   await carregarFabricas();   // define a fábrica selecionada
   carregarCadastros();
   carregarContasAPagar();
+  carregarComex();
   carregarUsuarios();
 }
 
@@ -782,6 +800,62 @@ document.getElementById('btnSalvarCap').addEventListener('click', async () => {
 });
 
 /* ════════════════════════════════════════
+   COMEX — e-mails (só unidade Salto de Pirapora)
+════════════════════════════════════════ */
+const normalizarNome = t => (t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const fabricaAtualEhPirapora = () => {
+  const f = fabricas.find(x => x.id === fabricaAtual);
+  return !!f && normalizarNome(f.nome).includes('pirapora');
+};
+
+async function carregarComex() {
+  const card = document.getElementById('cardComex');
+  const dest = document.getElementById('comexDestinatario');
+  const cc = document.getElementById('comexCc');
+  dest.value = '';
+  cc.value = '';
+  card.style.display = fabricaAtualEhPirapora() ? '' : 'none';
+  if (!fabricaAtualEhPirapora()) return;
+  try {
+    const res = await sbAuthFetch(`comex_emails?select=*&fabrica_id=eq.${fabricaAtual}`);
+    const rows = await res.json();
+    if (rows.length) {
+      dest.value = rows[0].destinatario || '';
+      cc.value = rows[0].cc || '';
+    }
+  } catch (err) {
+    showToast('Não foi possível carregar os e-mails de COMEX. Rode o SQL da tabela comex_emails no Supabase.', true);
+  }
+}
+
+document.getElementById('btnSalvarComex').addEventListener('click', async () => {
+  const destinatario = document.getElementById('comexDestinatario').value.trim();
+  const cc = document.getElementById('comexCc').value.trim();
+  if (!fabricaAtual || !fabricaAtualEhPirapora()) {
+    showToast('COMEX é exclusivo da unidade Salto de Pirapora.', true);
+    return;
+  }
+  if (!destinatario) {
+    showToast('Informe ao menos um destinatário.', true);
+    return;
+  }
+  const btn = document.getElementById('btnSalvarComex');
+  btn.disabled = true;
+  try {
+    await sbAuthFetch('comex_emails?on_conflict=fabrica_id', {
+      method: 'POST',
+      headers: { 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({ fabrica_id: fabricaAtual, destinatario, cc: cc || null, updated_at: new Date().toISOString() })
+    });
+    showToast('E-mails de COMEX atualizados!');
+  } catch (err) {
+    showToast(err.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+/* ════════════════════════════════════════
    FÁBRICAS
 ════════════════════════════════════════ */
 let fabricas = [];
@@ -823,6 +897,7 @@ document.getElementById('fabricaSelect').addEventListener('change', e => {
   limparFormCadastro();
   carregarCadastros();
   carregarContasAPagar();
+  carregarComex();
 });
 
 function renderFabricas() {
@@ -875,6 +950,7 @@ async function excluirFabrica(id) {
     await carregarFabricas();
     carregarCadastros();
     carregarContasAPagar();
+    carregarComex();
   } catch (err) {
     showToast(/23503|violates foreign key/.test(err.message)
       ? 'Não é possível excluir: a fábrica tem clientes ou envios cadastrados.'
@@ -904,6 +980,7 @@ document.getElementById('btnSalvarFabrica').addEventListener('click', async () =
     await carregarFabricas();
     carregarCadastros();
     carregarContasAPagar();
+    carregarComex();
     carregarUsuarios();
   } catch (err) {
     showToast(/23505|duplicate key/.test(err.message) ? 'Já existe uma fábrica com esse nome.' : err.message, true);
