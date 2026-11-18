@@ -814,6 +814,9 @@
           <button type="button" class="segmented-btn" data-tipo="contas_a_pagar">
             <i class="fa-solid fa-file-invoice-dollar"></i> Contas a Pagar
           </button>
+          <button type="button" class="segmented-btn" data-tipo="comex" id="btnTipoComex" style="display:none;">
+            <i class="fa-solid fa-ship"></i> COMEX
+          </button>
         </div>
       </div>
 
@@ -1210,7 +1213,7 @@ async function aposLogin() {
     showToast('Seu usuário não está vinculado a uma fábrica. Fale com o administrador.', 'warning');
   }
   renderLogin();
-  await Promise.all([carregarCadastros(), carregarContasAPagar()]);
+  await Promise.all([carregarCadastros(), carregarContasAPagar(), carregarComex()]);
 }
 
 // Restaura sessão salva no navegador (renova o token se necessário)
@@ -1306,12 +1309,31 @@ const CONTAS_A_PAGAR = {
 };
 const isContasAPagar = () => tipoAtual === 'contas_a_pagar';
 
+// COMEX: aba exclusiva da unidade Salto de Pirapora, destinatários fixos (editáveis no admin)
+const COMEX = {
+  id: null,
+  nome: 'COMEX',
+  tipo: 'comex',
+  destinatario: '',
+  cc: ''
+};
+const isComex = () => tipoAtual === 'comex';
+const isTipoFixo = () => isContasAPagar() || isComex(); // sem caixa de seleção
+const normalizar = t => (t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const fabricaTemComex = () => !!(usuarioLogado && normalizar(usuarioLogado.fabricaNome).includes('pirapora'));
+
 // Monta assunto e corpo conforme o tipo selecionado
 function montarEmail(num) {
   if (isContasAPagar()) {
     return {
       assunto: 'Solicitação de Pagamento GNRE',
       corpo: 'Olá,\n\nSegue a guia para pagamento:'
+    };
+  }
+  if (isComex()) {
+    return {
+      assunto: `COMEX - Documentos${num ? ' - ' + num : ''}`,
+      corpo: `Olá,\n\nSegue anexo com os documentos COMEX:${num ? '\n\nReferência: ' + num : ''}`
     };
   }
   return {
@@ -1351,6 +1373,40 @@ async function carregarContasAPagar() {
   if (isContasAPagar()) { mostrarContasAPagar(); updatePreview(); }
 }
 
+function mostrarComex() {
+  selectedClient = COMEX;
+  document.getElementById('chipTo').textContent = COMEX.destinatario || '— não cadastrado para sua fábrica —';
+  document.getElementById('chipCc').textContent = COMEX.cc || '—';
+  clientInfo.style.display = 'block';
+}
+
+// Mostra a aba COMEX só para Salto de Pirapora e carrega os e-mails dela
+async function carregarComex() {
+  COMEX.destinatario = '';
+  COMEX.cc = '';
+  const temComex = fabricaTemComex();
+  document.getElementById('btnTipoComex').style.display = temComex ? '' : 'none';
+  if (!temComex) return;
+  try {
+    const token = await obterToken();
+    if (token) {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/comex_emails?select=*&fabrica_id=eq.${usuarioLogado.fabricaId}`, {
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const rows = await res.json();
+        if (rows.length) {
+          COMEX.destinatario = rows[0].destinatario || '';
+          COMEX.cc = rows[0].cc || '';
+        }
+      }
+    }
+  } catch (err) {
+    console.error(err);
+  }
+  if (isComex()) { mostrarComex(); updatePreview(); }
+}
+
 function popularSelect(tipo) {
   clientSelect.innerHTML = '';
   const optDefault = document.createElement('option');
@@ -1384,9 +1440,9 @@ document.querySelectorAll('.segmented-btn').forEach(btn => {
     selectedClient = null;
     clientInfo.style.display = 'none';
 
-    if (isContasAPagar()) {
+    if (isTipoFixo()) {
       clientSelectField.style.display = 'none';
-      mostrarContasAPagar();
+      if (isComex()) mostrarComex(); else mostrarContasAPagar();
     } else {
       clientSelectField.style.display = '';
       selectLabel.textContent = tipoAtual === 'cliente' ? 'Cliente' : 'Transportadora';
@@ -1557,6 +1613,14 @@ function updatePreview() {
     return;
   }
 
+  // COMEX: mensagem própria, número de referência opcional
+  if (isComex()) {
+    const ref = num ? ` - <span class="highlight">${num}</span>` : '';
+    subjectEl.innerHTML = ` COMEX - Documentos${ref}`;
+    bodyEl.innerHTML    = `Olá,<br><br>Segue anexo com os documentos COMEX:${num ? `<br><br>Referência: <span class="highlight">${num}</span>` : ''}`;
+    return;
+  }
+
   // Assunto e corpo
   const nomeCliente = selectedClient ? ` - <span style="color:var(--text-muted); font-weight:500;">${selectedClient.nome}</span>` : '';
   if (num) {
@@ -1573,8 +1637,11 @@ function updatePreview() {
 ════════════════════════════════════════ */
 document.getElementById('btnCopy').addEventListener('click', () => {
   const num  = cargaNum.value.trim() || '[número da carga]';
+  const numReal = cargaNum.value.trim();
   const text = isContasAPagar()
     ? `Assunto: Solicitação de Pagamento GNRE\n\nOlá,\n\nSegue a guia para pagamento:`
+    : isComex()
+    ? `Assunto: COMEX - Documentos${numReal ? ' - ' + numReal : ''}\n\nOlá,\n\nSegue anexo com os documentos COMEX:${numReal ? '\n\nReferência: ' + numReal : ''}`
     : `Assunto: Documentos da Carga - ${num}\n\nOlá,\n\nSegue anexo com os arquivos XMLs e PDFs:\n\nCarga: ${num}`;
   navigator.clipboard.writeText(text).then(() => showToast('Mensagem copiada!')).catch(() => showToast('Erro ao copiar.'));
 });
@@ -1608,7 +1675,7 @@ btnSend.addEventListener('click', async () => {
   }
 
   // Em Contas a Pagar o número da carga é opcional
-  if (!num && !isContasAPagar()) {
+  if (!num && !isTipoFixo()) {
     document.getElementById('cargaError').style.display = 'block';
     cargaNum.focus();
     return;
@@ -1621,7 +1688,7 @@ btnSend.addEventListener('click', async () => {
   }
 
   if (!selectedClient.destinatario) {
-    showToast('Os e-mails de Contas a Pagar não estão cadastrados para sua fábrica. Fale com o administrador.', 'warning');
+    showToast(`Os e-mails de ${selectedClient.nome} não estão cadastrados para sua fábrica. Fale com o administrador.`, 'warning');
     return;
   }
 
@@ -1630,7 +1697,9 @@ btnSend.addEventListener('click', async () => {
   const email   = montarEmail(num);
   const subject = encodeURIComponent(email.assunto);
   const body    = encodeURIComponent(email.corpo);
-  const zipNome = isContasAPagar() ? `GNRE_Anexos${num ? '_' + num : ''}.zip` : `Anexos_${num}.zip`;
+  const zipNome = isContasAPagar() ? `GNRE_Anexos${num ? '_' + num : ''}.zip`
+                : isComex() ? `COMEX_Anexos${num ? '_' + num : ''}.zip`
+                : `Anexos_${num}.zip`;
 
   const mailto = `mailto:${to}?${cc ? 'cc=' + cc + '&' : ''}subject=${subject}&body=${body}`;
 
@@ -1772,7 +1841,7 @@ async function renderReport(filterText = '', filterDate = '') {
       <td style="white-space:nowrap;">${e.data} <span style="color:var(--text-muted);">${e.hora}</span></td>
       <td style="font-size:.78rem;">${e.faturista || '—'}</td>
       <td><strong>${e.cliente}</strong></td>
-      <td>${e.tipo ? `<span class="badge-tipo">${{ cliente: 'Cliente', transportadora: 'Transportadora', contas_a_pagar: 'Contas a Pagar' }[e.tipo] || e.tipo}</span>` : '—'}</td>
+      <td>${e.tipo ? `<span class="badge-tipo">${{ cliente: 'Cliente', transportadora: 'Transportadora', contas_a_pagar: 'Contas a Pagar', comex: 'COMEX' }[e.tipo] || e.tipo}</span>` : '—'}</td>
       <td class="td-num">${e.carga}</td>
       <td style="font-size:.78rem;">${e.destinatario}</td>
       <td><span class="badge badge-sent"><i class="fa-solid fa-check" style="margin-right:3px;"></i>${e.status}</span></td>
